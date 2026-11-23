@@ -70,21 +70,19 @@ function invalidate() {
   teleDirty = true;
 }
 
-// On secpro.pl the games live under the same key, /simtrackstand/<key>/, /simwheelie/<key>/ and
-// /simgp8/<key>/, with the English editions in en/ below them. Elsewhere the other language is the
-// file next to this one, as in dist/; where there is none, the language link is hidden.
-const secpro = /^(.*)\/simtrackstand\/([0-9a-f]{32})\//i.exec(location.pathname);
+// On secpro.pl the games live at /simtrackstand/, /simwheelie/ and /simgp8/, with the English editions
+// in en/ below them. Elsewhere the other language is the file next to this one, as in dist/; where there
+// is none, the language link is hidden.
+const secpro = /^(.*)\/simtrackstand\/(?:en\/)?(?:index\.html)?$/.exec(location.pathname);
 if (secpro) {
-  const [, root, key] = secpro;
+  const [, root] = secpro;
   const en = (yes) => (yes ? 'en/' : '');
   document.querySelectorAll('a[data-sibling]').forEach((a) => {
-    a.href = `${root}/${a.dataset.sibling}/${key}/${en(LANG === 'en')}`;
+    a.href = `${root}/${a.dataset.sibling}/${en(LANG === 'en')}`;
     a.removeAttribute('target');
     a.removeAttribute('rel');
   });
-  document
-    .querySelectorAll('a[data-lang]')
-    .forEach((a) => (a.href = `${root}/simtrackstand/${key}/${en(LANG !== 'en')}`));
+  document.querySelectorAll('a[data-lang]').forEach((a) => (a.href = `${root}/simtrackstand/${en(LANG !== 'en')}`));
 } else if (!/\/simtrackstand-(pl|en)\.html$/.test(location.pathname)) {
   document.querySelectorAll('a[data-lang]').forEach((a) => (a.hidden = true));
 }
