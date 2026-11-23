@@ -1,0 +1,102 @@
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>SimTrackstand</h1><span class="sub">balance on the spot</span><a class="sib" data-sibling="simwheelie" href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener" title="SimWheelie: a wheelie balance point trainer">SimWheelie →</a><a class="sib" data-sibling="simgp8" href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: a GP8 motogymkhana simulator">SimGP8 →</a><a class="sib" data-lang href="simtrackstand-pl.html" hreflang="pl" title="Polski">PL</a></div>
+    <div class="hset">
+      <div class="hg"><span class="k">Tyre pressure [bar]</span><div class="seg" id="press" role="group" aria-label="Tyre pressure"></div></div>
+      <div class="hg"><span class="k">Game speed</span><div class="seg" id="tempo" role="group" aria-label="Game speed"><button data-v="1">100%</button><button data-v="0.75">75%</button><button data-v="0.5">50%</button><button data-v="0.35">35%</button></div></div>
+      <div class="hg"><span class="k">View</span><div class="seg" id="view" role="group" aria-label="View"><button data-v="sup">Support</button><button data-v="trend">Trend</button></div></div>
+    </div>
+  </header>
+
+  <div class="play" id="play">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="View from behind and to the left: the bike in a trackstand, the lean gauge and the tyre support"></canvas>
+      <div class="overlay" id="overlay"></div>
+    </div>
+    <div class="pads" id="pads">
+      <div class="grp body"><button class="pad" data-k="bl">◀ Hips</button><button class="pad" data-k="br">Hips ▶</button></div>
+      <div class="grp mid"><button class="pad fb" data-k="fw">▲ Forward</button><button class="pad act" data-k="act" id="actPad">Start</button><button class="pad fb" data-k="bw">▼ Back</button></div>
+      <div class="grp"><button class="pad" data-k="left">◀ Bars</button><button class="pad" data-k="right">Bars ▶</button></div>
+    </div>
+  </div>
+
+  <section class="tele" aria-label="Telemetry">
+    <div class="head">
+      <h3>Telemetry</h3>
+      <span class="lg"><i style="background:var(--chalk)"></i>bike lean</span>
+      <span class="lg"><i style="background:var(--ok)"></i>centre of gravity over the support</span>
+      <span class="lg"><i style="background:var(--cone)"></i>bars</span>
+      <span class="lg"><i style="background:var(--spd)"></i>hips</span>
+      <span class="lg"><i style="background:var(--warn)"></i>rolling</span>
+    </div>
+    <div class="telebox"><canvas id="tele" aria-label="Chart of the lean, the centre of gravity, the bars, the hips and the rolling over the last 12 seconds"></canvas></div>
+  </section>
+
+  <div class="info">
+    <section>
+      <h3>Controls</h3>
+      <ul>
+        <li><kbd>A</kbd> <kbd>D</kbd>: hips left and right over the pegs. With the foot down they move while you hold the key and stay where you leave them. On the pegs a key takes them all the way to its side, and when you let go they return to where they were before you stood up.</li>
+        <li><kbd>←</kbd> <kbd>→</kbd>: bars. They turn while you hold the key and stay where you leave them.</li>
+        <li><kbd>W</kbd> <kbd>S</kbd> or <kbd>↑</kbd> <kbd>↓</kbd>: bike forward and back. Your body moves the other way over the pegs and rolls the bike a few centimetres. When you let go of the key, your body returns to the middle and the bike rolls back. Works only on the pegs.</li>
+        <li><kbd>Space</kbd>: start, then stand up on the pegs. <kbd>P</kbd>: pause.</li>
+        <li>The dot on the lean gauge, on the asphalt under the bike and in the support panel is the <b>centre of gravity</b>: green over the support band, yellow just beside it, red far outside it. The ring in the panel shows where it will be a quarter of a second later.</li>
+        <li>On a phone the buttons sit under the picture, and on top of it in landscape. The middle one starts, stands up and pauses; forward and back are above and below it.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>What the bike stands on</h3>
+      <p>A standing bike rests only on the two contact patches of its tyres. Between them lies a narrow <b>support band</b>, a few centimetres wide. As long as the centre of gravity of the bike and rider stays over that band, the tyres hold it up. Once it leaves the band, the bike falls over like an inverted pendulum.</p>
+      <p>Tyres are not rigid: as the bike leans, the pressure moves across the patch until it reaches the edge. Beyond that only the round side of the tyre holds the bike up.</p>
+    </section>
+    <section>
+      <h3>Starting with a foot down</h3>
+      <p>At first the bike rests on your <b>left foot</b> and leans slightly to the left. The number in the top left corner is the load on the foot. Hips to the right reduce it. Bars turned left, towards the foot, add to it, and bars turned right reduce it.</p>
+      <p>Stand up when the load is close to zero. The bike is then in balance and does not fall to either side straight away.</p>
+    </section>
+    <section>
+      <h3>Balancing on the pegs</h3>
+      <p>Moving the hips works at once, because the bike rolls the other way. When the bike leans to the right, <b>press the left peg</b> and move your hips to the left. The bike leans further under you, and the pressure on the tyres moves to the right, under the centre of gravity.</p>
+      <p>Hips moved towards the lean right the bike only for a moment. The support of the tyres then moves away from under the centre of gravity and the bike keeps falling.</p>
+    </section>
+    <section>
+      <h3>Bars and rolling</h3>
+      <p>The front tyre cannot slide sideways. When you turn the bars, the frame turns about the rear tyre and the centre of gravity moves 2–3 cm towards the turn. The <b>movement</b> of the bars towards the lean alone rights the bike at once, like a jerk of the hips.</p>
+      <p>While the wheels stand still, bars turned towards the lean keep the centre of gravity on that side. But it is enough for the bike to <b>roll a few centimetres forward</b>: the wheels run along an arc towards the turn and come back under the centre of gravity. Rolling back, the same arc takes the wheels the other way.</p>
+      <p>Hence the classic stance: bars at full lock, hips on the higher peg and small moves of the body forward and back. When the bike leans towards the turn, roll it forward. When it leans the other way, roll it back.</p>
+      <p>Try it with the bike parked: resting on your left leg, the bike sits on the leg harder with the bars at full left lock than with the bars turned right. It also stands more securely on its side stand with the bars turned left.</p>
+    </section>
+    <section>
+      <h3>Rolling without throttle or brake</h3>
+      <p>The wheels roll freely, and your body and the bike push against each other through the pegs and the bars. When your body moves 20 cm back, the bike rolls about 6 cm forward, while the shared centre of gravity hardly moves. Rolling resistance takes the motion away, so the bike stops by itself.</p>
+      <p>The <b>rolling</b> bar shows how far the bike has moved from where it started. With the bars turned the wheels follow an arc, so the bike also turns a little. The attempt ends when a tyre touches the line of the box, after about 60 cm.</p>
+    </section>
+    <section class="sup-demo">
+      <h3>Support band</h3>
+      <canvas id="sup" aria-label="Diagram from above: the contact patches and the support band under the centre of gravity"></canvas>
+      <input type="range" id="supr" min="-38" max="38" step="1" value="30" aria-label="Steering angle">
+      <div class="row"><span>bars to the left</span><span id="supv"></span><span>to the right</span></div>
+      <p>Contact patches at the pressure chosen above the game. The lower the pressure, the longer and wider the patch, and the turned front tyre widens the band even more.</p>
+    </section>
+    <section>
+      <h3>Tyre pressure</h3>
+      <p>Lower pressure gives a larger patch: the tyre flattens out more in length than in width. At the front, with the bars turned, that length stands across the bike, so the support band grows the most. A soft tyre keeps moving the pressure across its patch for longer before the bike rests on its round side.</p>
+      <p>On the road, too low a pressure is bad for the handling and for the tyre. Here it is only about balance on the spot.</p>
+    </section>
+    <section>
+      <h3>Why it is so hard</h3>
+      <p>A trackstand is an <b>inverted pendulum</b>. <span id="dblTxt"></span> That is why corrections have to be small and early.</p>
+      <p>When you really ride, you feel the bike move with your body and react faster than to a picture on a screen. Game speed 50% and 35% slows time down, while the physics stays the same. Records are kept separately for every pressure and game speed.</p>
+    </section>
+    <section>
+      <h3 id="specTitle">Bike data</h3>
+      <table class="spec" id="spec"></table>
+    </section>
+  </div>
+
+  <footer>
+    <p>SimTrackstand © 2026 Maciej Kasprzyk · Instagram <a href="https://www.instagram.com/cas8pl/" target="_blank" rel="noopener">@cas8pl</a></p>
+    <p>Free software under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU GPL</a>, version 3 or later. No warranty. Source code: <a href="https://github.com/casPL/SimTrackstand" target="_blank" rel="noopener">github.com/casPL/SimTrackstand</a>.</p>
+    <p>See also <a data-sibling="simwheelie" href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener">SimWheelie</a> and <a data-sibling="simgp8" href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener">SimGP8: a GP8 motogymkhana simulator</a>. The bike data comes from there.</p>
+  </footer>
+</div>

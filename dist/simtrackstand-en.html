@@ -1,0 +1,2613 @@
+<!doctype html>
+<!--
+  SimTrackstand: a motorcycle trackstand (static balance) trainer.
+  Copyright (C) 2026 Maciej Kasprzyk (Instagram: @cas8pl)
+
+  This program is free software: you can redistribute it and/or modify it under the terms of the
+  GNU General Public License as published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version. This program is distributed in the hope that it
+  will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details:
+  https://www.gnu.org/licenses/
+
+  Source code: https://github.com/casPL/SimTrackstand
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SimTrackstand</title>
+<meta name="description" content="SimTrackstand: a motorcycle trackstand trainer, balance on the spot. Physics in the browser, tyre pressure, telemetry.">
+<meta name="author" content="Maciej Kasprzyk">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --asphalt: #16181a;
+  --panel: #1f2225;
+  --panel2: #282c30;
+  --rule: #373c42;
+  --chalk: #ece8dd;
+  --muted: #9ca2a8;
+  --dim: #6b7177;
+  --cone: #ff6b1a;
+  --coneN: #3d8bff;
+  --coneF: #f0443a;
+  --rear: #f48fb1;
+  --gas: #f2c14e;
+  --spd: #64a8ff;
+  --ok: #4cc46f;
+  --warn: #e9b53c;
+  --f-display: 'Chakra Petch', 'Arial Narrow', sans-serif;
+  --f-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html, body { background: var(--asphalt); color: var(--chalk); }
+body {
+  margin: 0;
+  padding-block: 12px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; margin: 0; letter-spacing: .01em; text-wrap: balance; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--cone); outline-offset: 2px; }
+a { color: var(--spd); }
+
+.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 22px; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand h1 { font-size: clamp(24px, 3vw, 30px); line-height: 1; }
+.brand .sub { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.hset { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; }
+.hg .k { display: block; font-family: var(--f-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.seg { display: flex; flex-wrap: wrap; background: var(--panel2); border-radius: 4px; padding: 2px; gap: 2px; }
+.seg button { background: transparent; border: 0; border-radius: 3px; padding: 5px 9px; cursor: pointer; font-size: 12.5px; color: var(--muted); white-space: nowrap; flex: 1 1 auto; }
+.seg button[aria-pressed="true"] { background: var(--chalk); color: var(--asphalt); font-weight: 600; }
+.btn { background: var(--panel2); border: 1px solid var(--rule); border-radius: 4px; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.btn:hover { border-color: var(--muted); }
+.btn.go { background: var(--cone); border-color: var(--cone); color: #1a0d04; }
+
+.play { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.top, .play, .tele { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.stage { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; max-height: 70vh; min-height: 260px; background: #101316; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; touch-action: none; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(12, 14, 16, .55); }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; max-width: 500px; width: 100%; display: flex; flex-direction: column; gap: 9px; max-height: 100%; overflow: auto; }
+.card h2 { font-size: 23px; line-height: 1.15; }
+.card p { margin: 0; color: var(--muted); font-size: 14px; }
+.card p b { color: var(--chalk); }
+.card .meta { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { background: var(--panel2); border-radius: 5px; padding: 6px 9px; min-width: 0; }
+.stat .k { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .v { font-family: var(--f-display); font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat .v.rec { color: var(--ok); }
+.tip { border-left: 3px solid var(--cone); padding: 2px 0 2px 10px; color: var(--chalk) !important; }
+.hint { color: var(--warn) !important; }
+.keys { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+kbd { font-family: var(--f-mono); font-size: 11.5px; background: var(--panel2); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; color: var(--chalk); }
+
+.pads { display: none; justify-content: space-between; gap: 8px; touch-action: none; }
+.pads.on { display: flex; }
+.grp { display: flex; gap: 8px; flex: 1 1 0; }
+.pad { flex: 1 1 0; background: var(--panel2); border: 1px solid var(--rule); border-radius: 8px; min-height: 74px; font-family: var(--f-display); font-weight: 700; font-size: 15px; line-height: 1.15; cursor: pointer; }
+.pad.on { background: var(--chalk); color: var(--asphalt); }
+.pad.act { border-color: var(--cone); }
+.pad.act.up { background: var(--cone); color: #1a0d04; }
+.pad.act.on { background: var(--chalk); color: var(--asphalt); }
+.grp.mid { flex: 0.62 1 0; flex-direction: column; gap: 6px; }
+.grp.mid .pad { min-height: 44px; }
+.pads .pad { min-width: 0; padding: 0 3px; }
+
+.tele { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.tele .head { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; font-size: 12.5px; color: var(--muted); }
+.tele .head h3 { font-size: 15px; color: var(--chalk); }
+.lg { display: inline-flex; align-items: center; gap: 5px; }
+.lg i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.telebox { position: relative; height: 130px; }
+.telebox canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.info { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); }
+.info section { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.info h3 { font-size: 17px; margin-bottom: 6px; }
+.info p, .info li { font-size: 14px; color: var(--muted); margin: 0 0 6px; }
+.info ul { margin: 0; padding-left: 18px; }
+.info b { color: var(--chalk); }
+.spec { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.spec td { padding: 3px 0; border-bottom: 1px solid var(--rule); color: var(--muted); vertical-align: top; }
+.spec td:last-child { text-align: right; color: var(--chalk); font-family: var(--f-mono); font-size: 12.5px; padding-left: 10px; white-space: nowrap; }
+footer { font-size: 12.5px; color: var(--dim); border-top: 1px solid var(--rule); padding-top: 10px; }
+footer p { margin: 0 0 4px; }
+
+@media (max-width: 560px) {
+  .stage { aspect-ratio: 1 / 1; max-height: 64vh; }
+  .stats .stat .v { font-size: 19px; }
+  .card { padding: 12px 14px; gap: 7px; }
+  .card h2 { font-size: 20px; }
+  .card p { font-size: 13px; }
+}
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {
+  .play { height: calc(100svh - 24px); min-height: 280px; }
+  .stage { flex: 1 1 auto; height: 100%; aspect-ratio: auto; max-height: none; min-height: 0; }
+  .pads.on { position: absolute; left: 8px; right: 8px; bottom: 8px; pointer-events: none; }
+  .pads .grp { flex: 0 0 auto; pointer-events: auto; }
+  .pads .pad { width: 86px; min-height: 66px; background: rgba(40, 44, 48, .72); font-size: 14px; }
+  .pads .pad.on { background: var(--chalk); }
+  .pads .pad.act.up { background: var(--cone); }
+  .pads.on { align-items: flex-end; }
+  .pads .grp.mid { flex-direction: row; }
+  .pads .grp.mid .pad { width: 76px; min-height: 66px; }
+}
+@media (pointer: coarse) {
+  .card .keys { display: none; }
+}
+@media (max-width: 380px) {
+  .pad { font-size: 13px; }
+}
+.sib { align-self: center; font-family: var(--f-mono); font-size: 12px; color: var(--chalk); text-decoration: none; border: 1px solid var(--rule); border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+.sib:hover { border-color: var(--muted); }
+.sup-demo { display: flex; flex-direction: column; gap: 6px; }
+.sup-demo canvas { width: 100%; height: 170px; display: block; }
+.sup-demo input { width: 100%; accent-color: var(--cone); }
+.sup-demo .row { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.pads .grp.body .pad { border-color: var(--spd); }
+.pads .grp.body .pad.on { background: var(--spd); }
+.pads .pad.fb { border-color: var(--ok); }
+.pads .pad.fb.on { background: var(--ok); color: var(--asphalt); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>SimTrackstand</h1><span class="sub">balance on the spot</span><a class="sib" data-sibling="simwheelie" href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener" title="SimWheelie: a wheelie balance point trainer">SimWheelie →</a><a class="sib" data-sibling="simgp8" href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: a GP8 motogymkhana simulator">SimGP8 →</a><a class="sib" data-lang href="simtrackstand-pl.html" hreflang="pl" title="Polski">PL</a></div>
+    <div class="hset">
+      <div class="hg"><span class="k">Tyre pressure [bar]</span><div class="seg" id="press" role="group" aria-label="Tyre pressure"></div></div>
+      <div class="hg"><span class="k">Game speed</span><div class="seg" id="tempo" role="group" aria-label="Game speed"><button data-v="1">100%</button><button data-v="0.75">75%</button><button data-v="0.5">50%</button><button data-v="0.35">35%</button></div></div>
+      <div class="hg"><span class="k">View</span><div class="seg" id="view" role="group" aria-label="View"><button data-v="sup">Support</button><button data-v="trend">Trend</button></div></div>
+    </div>
+  </header>
+
+  <div class="play" id="play">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="View from behind and to the left: the bike in a trackstand, the lean gauge and the tyre support"></canvas>
+      <div class="overlay" id="overlay"></div>
+    </div>
+    <div class="pads" id="pads">
+      <div class="grp body"><button class="pad" data-k="bl">◀ Hips</button><button class="pad" data-k="br">Hips ▶</button></div>
+      <div class="grp mid"><button class="pad fb" data-k="fw">▲ Forward</button><button class="pad act" data-k="act" id="actPad">Start</button><button class="pad fb" data-k="bw">▼ Back</button></div>
+      <div class="grp"><button class="pad" data-k="left">◀ Bars</button><button class="pad" data-k="right">Bars ▶</button></div>
+    </div>
+  </div>
+
+  <section class="tele" aria-label="Telemetry">
+    <div class="head">
+      <h3>Telemetry</h3>
+      <span class="lg"><i style="background:var(--chalk)"></i>bike lean</span>
+      <span class="lg"><i style="background:var(--ok)"></i>centre of gravity over the support</span>
+      <span class="lg"><i style="background:var(--cone)"></i>bars</span>
+      <span class="lg"><i style="background:var(--spd)"></i>hips</span>
+      <span class="lg"><i style="background:var(--warn)"></i>rolling</span>
+    </div>
+    <div class="telebox"><canvas id="tele" aria-label="Chart of the lean, the centre of gravity, the bars, the hips and the rolling over the last 12 seconds"></canvas></div>
+  </section>
+
+  <div class="info">
+    <section>
+      <h3>Controls</h3>
+      <ul>
+        <li><kbd>A</kbd> <kbd>D</kbd>: hips left and right over the pegs. With the foot down they move while you hold the key and stay where you leave them. On the pegs a key takes them all the way to its side, and when you let go they return to where they were before you stood up.</li>
+        <li><kbd>←</kbd> <kbd>→</kbd>: bars. They turn while you hold the key and stay where you leave them.</li>
+        <li><kbd>W</kbd> <kbd>S</kbd> or <kbd>↑</kbd> <kbd>↓</kbd>: bike forward and back. Your body moves the other way over the pegs and rolls the bike a few centimetres. When you let go of the key, your body returns to the middle and the bike rolls back. Works only on the pegs.</li>
+        <li><kbd>Space</kbd>: start, then stand up on the pegs. <kbd>P</kbd>: pause.</li>
+        <li>The dot on the lean gauge, on the asphalt under the bike and in the support panel is the <b>centre of gravity</b>: green over the support band, yellow just beside it, red far outside it. The ring in the panel shows where it will be a quarter of a second later.</li>
+        <li>On a phone the buttons sit under the picture, and on top of it in landscape. The middle one starts, stands up and pauses; forward and back are above and below it.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>What the bike stands on</h3>
+      <p>A standing bike rests only on the two contact patches of its tyres. Between them lies a narrow <b>support band</b>, a few centimetres wide. As long as the centre of gravity of the bike and rider stays over that band, the tyres hold it up. Once it leaves the band, the bike falls over like an inverted pendulum.</p>
+      <p>Tyres are not rigid: as the bike leans, the pressure moves across the patch until it reaches the edge. Beyond that only the round side of the tyre holds the bike up.</p>
+    </section>
+    <section>
+      <h3>Starting with a foot down</h3>
+      <p>At first the bike rests on your <b>left foot</b> and leans slightly to the left. The number in the top left corner is the load on the foot. Hips to the right reduce it. Bars turned left, towards the foot, add to it, and bars turned right reduce it.</p>
+      <p>Stand up when the load is close to zero. The bike is then in balance and does not fall to either side straight away.</p>
+    </section>
+    <section>
+      <h3>Balancing on the pegs</h3>
+      <p>Moving the hips works at once, because the bike rolls the other way. When the bike leans to the right, <b>press the left peg</b> and move your hips to the left. The bike leans further under you, and the pressure on the tyres moves to the right, under the centre of gravity.</p>
+      <p>Hips moved towards the lean right the bike only for a moment. The support of the tyres then moves away from under the centre of gravity and the bike keeps falling.</p>
+    </section>
+    <section>
+      <h3>Bars and rolling</h3>
+      <p>The front tyre cannot slide sideways. When you turn the bars, the frame turns about the rear tyre and the centre of gravity moves 2–3 cm towards the turn. The <b>movement</b> of the bars towards the lean alone rights the bike at once, like a jerk of the hips.</p>
+      <p>While the wheels stand still, bars turned towards the lean keep the centre of gravity on that side. But it is enough for the bike to <b>roll a few centimetres forward</b>: the wheels run along an arc towards the turn and come back under the centre of gravity. Rolling back, the same arc takes the wheels the other way.</p>
+      <p>Hence the classic stance: bars at full lock, hips on the higher peg and small moves of the body forward and back. When the bike leans towards the turn, roll it forward. When it leans the other way, roll it back.</p>
+      <p>Try it with the bike parked: resting on your left leg, the bike sits on the leg harder with the bars at full left lock than with the bars turned right. It also stands more securely on its side stand with the bars turned left.</p>
+    </section>
+    <section>
+      <h3>Rolling without throttle or brake</h3>
+      <p>The wheels roll freely, and your body and the bike push against each other through the pegs and the bars. When your body moves 20 cm back, the bike rolls about 6 cm forward, while the shared centre of gravity hardly moves. Rolling resistance takes the motion away, so the bike stops by itself.</p>
+      <p>The <b>rolling</b> bar shows how far the bike has moved from where it started. With the bars turned the wheels follow an arc, so the bike also turns a little. The attempt ends when a tyre touches the line of the box, after about 60 cm.</p>
+    </section>
+    <section class="sup-demo">
+      <h3>Support band</h3>
+      <canvas id="sup" aria-label="Diagram from above: the contact patches and the support band under the centre of gravity"></canvas>
+      <input type="range" id="supr" min="-38" max="38" step="1" value="30" aria-label="Steering angle">
+      <div class="row"><span>bars to the left</span><span id="supv"></span><span>to the right</span></div>
+      <p>Contact patches at the pressure chosen above the game. The lower the pressure, the longer and wider the patch, and the turned front tyre widens the band even more.</p>
+    </section>
+    <section>
+      <h3>Tyre pressure</h3>
+      <p>Lower pressure gives a larger patch: the tyre flattens out more in length than in width. At the front, with the bars turned, that length stands across the bike, so the support band grows the most. A soft tyre keeps moving the pressure across its patch for longer before the bike rests on its round side.</p>
+      <p>On the road, too low a pressure is bad for the handling and for the tyre. Here it is only about balance on the spot.</p>
+    </section>
+    <section>
+      <h3>Why it is so hard</h3>
+      <p>A trackstand is an <b>inverted pendulum</b>. <span id="dblTxt"></span> That is why corrections have to be small and early.</p>
+      <p>When you really ride, you feel the bike move with your body and react faster than to a picture on a screen. Game speed 50% and 35% slows time down, while the physics stays the same. Records are kept separately for every pressure and game speed.</p>
+    </section>
+    <section>
+      <h3 id="specTitle">Bike data</h3>
+      <table class="spec" id="spec"></table>
+    </section>
+  </div>
+
+  <footer>
+    <p>SimTrackstand © 2026 Maciej Kasprzyk · Instagram <a href="https://www.instagram.com/cas8pl/" target="_blank" rel="noopener">@cas8pl</a></p>
+    <p>Free software under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU GPL</a>, version 3 or later. No warranty. Source code: <a href="https://github.com/casPL/SimTrackstand" target="_blank" rel="noopener">github.com/casPL/SimTrackstand</a>.</p>
+    <p>See also <a data-sibling="simwheelie" href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener">SimWheelie</a> and <a data-sibling="simgp8" href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener">SimGP8: a GP8 motogymkhana simulator</a>. The bike data comes from there.</p>
+  </footer>
+</div>
+<script>
+(() => {
+'use strict';
+
+const LANG = 'en';
+const DICT = {"Na motocyklu {} przechył poza krawędzią śladu opon rośnie dwukrotnie mniej więcej co {} s, jeśli nic nie zrobisz.":"On the {}, once the tyres are past the edge of their patches, the lean doubles roughly every {} s if you do nothing.","Dane: {}, {}":"Data: {}, {}","Masa motocykla / kierowcy":"Mass of the bike / rider","Środek ciężkości z kierowcą na podnóżkach: wysokość":"Centre of gravity with the rider on the pegs: height","Rozstaw osi / środek ciężkości przed tylną osią":"Wheelbase / centre of gravity ahead of the rear axle","Wyprzedzenie (trail) / skręt kierownicy":"Trail / steering lock","Ślad tylnej opony: szerokość × długość":"Rear contact patch: width × length","Ślad przedniej opony: szerokość × długość":"Front contact patch: width × length","Pas podparcia: kierownica prosto / do oporu":"Support band: bars straight / at full lock","Opona dochodzi do krawędzi śladu przy przechyle":"The tyre reaches the edge of its patch at a lean of","Kierownica do oporu przesuwa środek ciężkości w stronę skrętu o":"Bars at full lock move the centre of gravity towards the turn by","Przesunięcie bioder nad podnóżkami":"Hip shift over the pegs","Przesunięcie ciała przód–tył":"Body shift forward and back","Opór toczenia opon":"Tyre rolling resistance","tempo {}":"game speed {}","rekord {} s":"record {} s","Zaczynasz ze <b>stopą na ziemi</b>. Ustaw kierownicę i biodra tak, żeby nacisk na lewą stopę spadł prawie do zera, i dopiero wtedy wstań na podnóżki.":"You start with <b>a foot on the ground</b>. Set the bars and your hips so that the load on your left foot drops almost to zero, and only then stand up on the pegs.","Potem stoisz w kwadracie jak najdłużej. Balansujesz <b>biodrami</b>, <b>kierownicą</b> i <b>ciałem przód–tył</b>. Z kierownicą skręconą w stronę przechyłu przetocz motocykl kilka centymetrów do przodu, a koła wjadą pod środek ciężkości.":"Then stay in the box as long as you can. You balance with your <b>hips</b>, the <b>bars</b> and your <b>body forward and back</b>. With the bars turned towards the lean, roll the bike a few centimetres forward and the wheels run back under the centre of gravity.","Próba kończy się podpórką, gdy środek ciężkości ucieknie o {}° od podparcia, albo gdy opona dotknie linii kwadratu.":"The attempt ends with a dab when the centre of gravity gets {}° away from the support, or when a tyre touches the line of the box.","<kbd>A</kbd> <kbd>D</kbd> biodra · <kbd>←</kbd> <kbd>→</kbd> kierownica · <kbd>W</kbd> <kbd>S</kbd> przód i tył · <kbd>Spacja</kbd> wstań":"<kbd>A</kbd> <kbd>D</kbd> hips · <kbd>←</kbd> <kbd>→</kbd> bars · <kbd>W</kbd> <kbd>S</kbd> forward and back · <kbd>Space</kbd> stand up","Tempo {}: czas płynie wolniej, fizyka zostaje ta sama.":"Game speed {}: time runs slower, the physics stays the same.","100% to czas rzeczywisty.":"100% is real time.","Start (Spacja)":"Start (Space)","Motocykl wytoczył się z kwadratu. Przetaczaj go krótko i od razu wracaj ciałem na środek. Długie trzymanie przodu albo tyłu wyprowadza motocykl coraz dalej.":"The bike rolled out of the box. Roll it in short moves and bring your body straight back to the middle. Holding forward or back for long takes the bike further and further away.","Przy wstawaniu lewa stopa niosła {} kg, więc motocykl od razu poleciał w lewo. Zanim wstaniesz, przesuń biodra w prawo, aż nacisk na stopę spadnie prawie do zera. Kierownica skręcona w lewo dokłada nacisku, w prawo go zmniejsza.":"As you stood up, your left foot carried {} kg, so the bike fell to the left at once. Before you stand up, move your hips to the right until the load on the foot drops almost to zero. Bars turned left add load, bars turned right take it away.","Przy wstawaniu motocykl ciągnął już w prawo, więc od razu poleciał na drugą stronę. Przed wstaniem ustaw biodra bliżej środka albo skręć kierownicę bardziej w lewo, aż nacisk na stopę będzie bliski zera.":"As you stood up, the bike was already pulling to the right, so it fell to the other side at once. Before you stand up, bring your hips closer to the middle or turn the bars further left, until the load on the foot is close to zero.","Motocykl przewrócił się w stronę skręconej kierownicy. Dopóki koła stoją, skręcona kierownica trzyma środek ciężkości po stronie skrętu. Gdy motocykl zaczyna się kłaść w stronę skrętu, przetocz go do przodu: koła pojadą łukiem pod środek ciężkości.":"The bike fell towards the turned bars. While the wheels stand still, turned bars keep the centre of gravity on the side they turn to. When the bike starts to lean towards the turn, roll it forward: the wheels run along an arc back under the centre of gravity.","Motocykl przewrócił się na stronę przeciwną do skrętu kierownicy. Wtedy przetocz go do tyłu: koła pojadą łukiem w drugą stronę, pod środek ciężkości. Pomagają też biodra na wyższym podnóżku.":"The bike fell away from the turned bars. In that case roll it back: the wheels run along an arc the other way, back under the centre of gravity. Hips on the higher peg help too.","Biodra szły w stronę przechyłu. To prostuje motocykl tylko na chwilę, a opona zjeżdża spod środka ciężkości. Gdy motocykl kładzie się w prawo, dociśnij lewy podnóżek i przesuń biodra w lewo. Motocykl pochyli się pod tobą, a opona wróci pod środek ciężkości.":"Your hips went towards the lean. That rights the bike only for a moment, and the support of the tyres moves away from under the centre of gravity. When the bike leans to the right, press the left peg and move your hips to the left. The bike leans further under you, and the support comes back under the centre of gravity.","Korekty muszą być małe i wczesne. Patrz na kropkę środka ciężkości w panelu podparcia i reaguj, zanim wyjdzie z zielonego pasa.":"Corrections have to be small and early. Watch the centre of gravity dot in the support panel and react before it leaves the green band.","Dobrze. Teraz mniejsze i wcześniejsze ruchy bioder, zanim kropka środka ciężkości dojdzie do brzegu zielonego pasa.":"Good. Now make smaller and earlier hip moves, before the centre of gravity dot reaches the edge of the green band.","Wyjazd z kwadratu":"Out of the box","Podpórka":"Dab","Czas":"Time","Śr. CoG":"Avg CoG","Kier. w przechył":"Bars into lean","maks. przechył {}° · maks. toczenie {} cm · na stopie przy wstaniu {} kg · rekord {} · {} · tempo {}":"max lean {}° · max roll {} cm · on the foot at stand-up {} kg · record {} · {} · game speed {}","Nowy rekord.":"New record.","Jeszcze raz (Spacja)":"Again (Space)","Wstań":"Stand up","Dalej":"Resume","Pauza":"Pause","Start":"Start","PODPARCIE Z GÓRY":"SUPPORT FROM ABOVE","stopa":"foot","w bok ×{}":"sideways ×{}","POD ŚRODKIEM CIĘŻKOŚCI":"UNDER THE CENTRE OF GRAVITY","pas ±{} cm · CoG {} cm":"band ±{} cm · CoG {} cm","STOPA NA ZIEMI":"FOOT DOWN","motocykl ciągnie w prawo":"the bike pulls to the right","nacisk na lewą stopę":"load on the left foot","przycisk „Wstań”":"“Stand up” button","Spacja: wstań na podnóżki":"Space: stand up on the pegs","NA PODNÓŻKACH":"ON THE PEGS","TRACKSTAND":"TRACKSTAND","bez rekordu":"no record","L":"L","P":"R","CoG {}°":"CoG {}°","BIODRA":"HIPS","KIEROWNICA":"BARS","TOCZENIE":"ROLLING","dotknij przycisku, aby grać dalej":"touch a button to play on","P: dalej":"P: resume","P ":"R ","L ":"L ","w lewo":"to the left","w prawo":"to the right","pas ±{} cm":"band ±{} cm","środek {} cm {}":"centre {} cm {}","tył":"rear","przód":"front","środek ciężkości":"centre of gravity","lewa strona":"left side","prawa strona":"right side"};
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Constants of the model. SI units throughout; the bike is seen from behind, y to the rider's
+// right, z up. The roll angle phi and the steering angle grow to the right.
+
+const G = 9.81;
+const DT = 1 / 240; // physics time step [s]
+const HIP_W = 9; // hips following their target over the pegs: natural frequency [rad/s], critically damped
+const HIP_RATE = 0.4; // with the foot down: how fast a held key moves the hips [m/s]
+const FORE_W = 9; // the body moving forward and back over the pegs: natural frequency [rad/s], critically damped
+const FORE = 0.2; // how far a held key takes the body forward or back from the middle of the pegs [m]
+const BAR_W = 16; // handlebar following its target: natural frequency [rad/s], critically damped
+const STEER_RATE = 60; // handlebar target speed while a key is held [°/s]
+const P0 = 40; // pressure the tyre carcass carries on its own [kPa]
+const EDGE_DEG = 3.5; // tyre roll at which the support reaches the edge of the patches at 2.2 bar [°]
+const EDGE_SOFT = 3; // and how much further at 0.8 bar [°]
+const DAB_DEG = 10; // the rider puts a foot down when the CoG leans this far from the support [°]
+const LEAN_MAX = 28; // or when the bike itself leans this far [°]
+const FOOT_LEAN = -2; // lean of the bike resting on the rider's left foot before standing up [°]
+const FOOT_ARM = 0.45; // the foot stands this far from the line of the tyres [m]
+const PRESSURES = [0.8, 1.2, 1.6, 2.0]; // tyre pressures to choose from [bar]
+const ROLL_SCALE = 0.12; // rolling forward or back shown at full scale [m]
+const ROLL_MAX = 0.6; // the attempt ends when the bike rolls this far and a tyre reaches the chalk line [m]
+
+const RAD = Math.PI / 180;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The bike, the rider standing on the pegs, and what the tyres give at a chosen pressure.
+
+// m bike [kg], mr rider [kg], L wheelbase [m], b CoG ahead of the rear axle [m], hb bike CoG height,
+// hr rider CoG height standing on the pegs [m], Ib, Ir roll inertia about their own CoG [kg·m²],
+// rr wheel radius [m], rake [°], trail [m], lock steering lock [°], du rider shift over the pegs [m],
+// crown tyre crown radius [m]
+// prettier-ignore
+const BIKE = {
+  name: 'Sur-Ron SM 17"', color: '#e33b34',
+  m: 85, mr: 80, L: 1.38, b: 0.64, hb: 0.48, hr: 1.12, Ib: 8, Ir: 10,
+  rr: 0.3, rake: 26, trail: 0.09, lock: 38, du: 0.16, crown: 0.05,
+};
+
+const PREP = new Map();
+
+/**
+ * Constants used by every physics step, computed once per pressure p [bar].
+ * M, h: total mass and CoG height; J0: roll inertia about the ground line with the rider centred;
+ * f: share of the weight on the front; wr, lr, wf, lf: contact patch width and length, rear and
+ * front [m]; edge: tyre roll at which the pressure reaches the edge of the patch [rad];
+ * cr: tyre roll damping [N·m·s/rad]; crr: rolling resistance coefficient.
+ */
+function prep(p) {
+  let c = PREP.get(p);
+  if (c) return c;
+  const bk = BIKE;
+  const M = bk.m + bk.mr;
+  const h = (bk.m * bk.hb + bk.mr * bk.hr) / M;
+  const f = bk.b / bk.L;
+  const patch = (load) => {
+    const A = load / ((p * 100 + P0) * 1000);
+    const w = 0.05 * Math.pow(A / 0.004, 0.35);
+    return [w, A / (0.8 * w)];
+  };
+  const [wr, lr] = patch((1 - f) * M * G);
+  const [wf, lf] = patch(f * M * G);
+  c = {
+    M,
+    h,
+    f,
+    J0: bk.Ib + bk.m * bk.hb * bk.hb + bk.Ir + bk.mr * bk.hr * bk.hr,
+    wr,
+    lr,
+    wf,
+    lf,
+    edge: (EDGE_DEG + (EDGE_SOFT * (2.2 - p)) / 1.4) * RAD,
+    cr: 30,
+    crr: 0.012 + (0.012 * (2.2 - p)) / 1.4,
+  };
+  PREP.set(p, c);
+  return c;
+}
+
+/** Steering angle seen on the ground for the handlebar turned by d about the raked steering axis. */
+function groundSteer(d) {
+  return Math.atan(Math.tan(d) * Math.cos(BIKE.rake * RAD));
+}
+
+/**
+ * Sideways shift of the front contact patch, relative to the frame, with the bars turned by d [m].
+ * The patch trails behind the steering axis, so it swings the other way: bars to the right, patch
+ * to the left. Standing still, the patch cannot slide, so the frame turns about the rear tyre instead
+ * and carries the CoG towards the side the bars turn.
+ */
+function frontShift(d) {
+  return -BIKE.trail * Math.sin(groundSteer(d));
+}
+
+/** Support under the CoG at steering d: centre and half width of the band the tyres can push from [m]. */
+function support(c, d) {
+  const dg = groundSteer(d);
+  const sd = Math.abs(Math.sin(dg)),
+    cd = Math.cos(dg);
+  return {
+    mid: c.f * frontShift(d),
+    half: (1 - c.f) * (c.wr / 2) + c.f * ((c.wf / 2) * cd + (c.lf / 2) * sd),
+  };
+}
+
+/**
+ * Where the tyres push from across the bike line at lean phi and steering d [m]. Each tyre rolls
+ * across its patch up to the edge, then onto its round crown. With the front wheel turned, leaning
+ * also moves its lowest point along the rim towards the low side.
+ */
+function pushPoint(c, phi, d) {
+  const sup = support(c, d);
+  const across =
+    Math.abs(phi) > c.edge
+      ? Math.sign(phi) * (sup.half + BIKE.crown * (Math.abs(phi) - c.edge))
+      : (sup.half * phi) / c.edge;
+  const sd = Math.sin(groundSteer(d));
+  return sup.mid + across + c.f * BIKE.rr * sd * sd * Math.sin(phi);
+}
+
+/** Time for a small lean to double with the tyres past their edge and nothing done [s]. */
+function doubling(p) {
+  const c = prep(p);
+  return Math.LN2 / Math.sqrt((c.M * G * (c.h - BIKE.crown)) / c.J0);
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// One time step of the standing bike. The bike with the rider rolls about the line where the tyres
+// touch the asphalt, as an inverted pendulum. Gravity acts between the CoG and the point the tyres
+// push from, which moves across the contact patches as the tyres roll onto their side. Moving the
+// hips over the pegs rolls the bike the other way. Turning the bars turns the frame about the rear
+// tyre, because the front patch cannot slide: the CoG moves across the tyre line towards the side
+// the bars turn, and while it moves, the bike rolls the other way. The wheels roll freely: moving the
+// body forward over the pegs pushes the bike back a few centimetres, and with the bars turned the
+// wheels then run sideways under the CoG.
+
+/**
+ * t: time on the pegs; phi, om: roll angle and rate; u, ud, uT, uS: hips over the pegs, their rate,
+ * target and where they were set with the foot down [m]; d, dd, dT: steering angle, rate and
+ * target; sx, sv: CoG shift across the tyre line made by the steering, and its rate [m]; yG, yGv,
+ * yP: CoG, its rate and the point the tyres push from, across the bike line [m]; mid, half: the
+ * support band; edge: tyres past the edge of their patches; cogLean: CoG angle from the middle of
+ * the band; foot: the bike rests on the left foot; footLoad: what the foot carries [N]; done: 'dab'
+ * when a foot goes down, 'roll' when a tyre rolls onto the chalk line; w, wd, wT: body forward of
+ * the middle of the pegs, its rate and target [m]; x, v, va: the bike rolled forward, its speed and
+ * acceleration; vG: speed of the CoG of the bike with the rider; yaw, X, Y: heading and where the
+ * rear tyre stands on the asphalt, for the picture; sumCog, maxLean, into, maxRoll:
+ * statistics (into: time with the bars turned towards the lean; maxRoll: furthest the bike rolled
+ * from where it stood).
+ */
+function newState() {
+  // prettier-ignore
+  return {
+    t: 0, phi: FOOT_LEAN * RAD, om: 0, u: 0, ud: 0, uT: 0, uS: 0, d: 0, dd: 0, dT: 0, sx: 0, sv: 0,
+    yG: 0, yGv: 0, yP: 0, mid: 0, half: 0.03, edge: false, cogLean: 0, foot: true, footLoad: 0,
+    done: null, w: 0, wd: 0, wT: 0, x: 0, v: 0, va: 0, vG: 0, yaw: 0, X: 0, Y: 0,
+    sumCog: 0, maxLean: 0, into: 0, maxRoll: 0,
+  };
+}
+
+/**
+ * Advances s by DT at pressure p [bar] with the controls inp = { left, right, bl, br, fw, bw }, each
+ * 0…1; fw and bw roll the bike forward and back, the body going the other way.
+ */
+function step(s, p, inp) {
+  const bk = BIKE;
+  const c = prep(p);
+  const dt = DT;
+
+  // Handlebar: its target moves while a key is held and stays where it is left; the bars follow.
+  const lock = bk.lock * RAD;
+  s.dT = clamp(s.dT + ((inp.right || 0) - (inp.left || 0)) * STEER_RATE * RAD * dt, -lock, lock);
+  const da = BAR_W * BAR_W * (s.dT - s.d) - 2 * BAR_W * s.dd;
+  s.dd += da * dt;
+  s.d += s.dd * dt;
+  // With the foot down the hips move while a key is held and stay. On the pegs a key takes them all
+  // the way to its side, and let go, they come back to where they were set.
+  const key = (inp.br || 0) - (inp.bl || 0);
+  if (s.foot) {
+    s.uS = clamp(s.uS + key * HIP_RATE * dt, -bk.du, bk.du);
+    s.uT = s.uS;
+  } else s.uT = key ? clamp(key, -1, 1) * bk.du : s.uS;
+  const ua = HIP_W * HIP_W * (s.uT - s.u) - 2 * HIP_W * s.ud;
+  s.ud += ua * dt;
+  s.u += s.ud * dt;
+
+  // The body forward and back over the pegs. With the foot down it stays in the middle. On the pegs
+  // the bike moves the other way, because the CoG of the bike with the rider changes speed only
+  // through the rolling resistance of the tyres.
+  const fk = s.foot ? 0 : (inp.bw || 0) - (inp.fw || 0);
+  s.wT = clamp(fk, -1, 1) * FORE;
+  const wa = FORE_W * FORE_W * (s.wT - s.w) - 2 * FORE_W * s.wd;
+  s.wd += wa * dt;
+  s.w += s.wd * dt;
+  if (s.foot) {
+    s.vG = s.v = s.va = 0;
+  } else {
+    const drag = c.crr * G * Math.tanh(s.v / 0.02);
+    s.vG -= drag * dt;
+    s.v = s.vG - (bk.mr / c.M) * s.wd;
+    s.va = -drag - (bk.mr / c.M) * wa;
+    s.x += s.v * dt;
+  }
+
+  // The CoG moves across the tyre line as the bars turn; its acceleration rolls the bike.
+  const e = 1e-4;
+  const s0 = cogShift(c, s.d),
+    sP = cogShift(c, s.d + e),
+    sM = cogShift(c, s.d - e);
+  const s1 = (sP - sM) / (2 * e),
+    s2 = (sP - 2 * s0 + sM) / (e * e);
+  s.sx = s0;
+  s.sv = s1 * s.dd;
+  const sa = s1 * da + s2 * s.dd * s.dd;
+
+  const sup = support(c, s.d);
+  s.mid = sup.mid;
+  s.half = sup.half;
+  const cs = Math.cos(s.phi),
+    sn = Math.sin(s.phi);
+  s.edge = Math.abs(s.phi) > c.edge;
+  s.yP = pushPoint(c, s.phi, s.d);
+  s.yG = c.h * sn + (bk.mr * s.u * cs) / c.M;
+  s.yGv = c.h * cs * s.om + (bk.mr * (s.ud * cs - s.u * sn * s.om)) / c.M;
+  s.cogLean = Math.atan2(s.yG - s.mid, c.h);
+  const gravity = c.M * G * (s.yG - s.yP);
+  if (s.foot) {
+    // Resting on the left foot: the lean stays and the foot carries what gravity leaves.
+    s.footLoad = -gravity / FOOT_ARM;
+    s.om = 0;
+    return s;
+  }
+
+  // Rolling with the bars turned, the wheels follow a curve: the bike line swings sideways under the
+  // CoG, and the faster it rolls, the harder.
+  const k0 = Math.tan(groundSteer(s.d)) / bk.L;
+  const k1 = (Math.tan(groundSteer(s.d + e)) - Math.tan(groundSteer(s.d - e))) / (2 * e * bk.L);
+  const side = bk.b * (s.va * k0 + s.v * k1 * s.dd) + s.v * s.v * k0 + (s.v * s.sv) / (c.f * bk.L);
+  s.yaw += s.v * k0 * dt;
+  s.X += s.v * Math.cos(s.yaw) * dt;
+  s.Y += s.v * Math.sin(s.yaw) * dt;
+  const J = c.J0 + bk.mr * s.u * s.u;
+  const torque =
+    gravity -
+    c.M * c.h * (sa + side) * cs -
+    bk.mr * bk.hr * ua -
+    2 * bk.mr * s.u * s.ud * s.om -
+    (s.edge ? 0 : c.cr * s.om);
+  s.om += (torque / J) * dt;
+  s.phi += s.om * dt;
+  s.t += dt;
+
+  s.sumCog += Math.abs(s.cogLean) * dt;
+  s.maxLean = Math.max(s.maxLean, Math.abs(s.phi));
+  s.maxRoll = Math.max(s.maxRoll, Math.abs(s.x));
+  if (Math.abs(s.d) > 5 * RAD && Math.sign(s.d) === Math.sign(s.phi)) s.into += dt;
+  if (Math.abs(s.cogLean) > DAB_DEG * RAD || Math.abs(s.phi) > LEAN_MAX * RAD) s.done = 'dab';
+  else if (Math.abs(s.x) > ROLL_MAX) s.done = 'roll';
+  return s;
+}
+
+/** CoG shift across the tyre line made by the steering d [m]: the frame turns about the rear tyre. */
+function cogShift(c, d) {
+  return -c.f * frontShift(d);
+}
+
+/** Lifts the left foot onto the peg: from now on the rider balances. */
+function standUp(s) {
+  s.foot = false;
+  s.footLoad = 0;
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Interface language. Polish is the source language: user-visible strings stay in the code as
+// templates tagged with i18n. For another edition the build defines DICT, which maps every Polish
+// template (with {} standing for each placeholder) to its translation; LANG is the edition's language.
+
+const DECIMAL = LANG === 'pl' ? ',' : '.';
+
+const translated = new WeakMap();
+
+function i18n(strings, ...values) {
+  let parts = translated.get(strings);
+  if (!parts) {
+    const source = strings.join('{}');
+    parts = (DICT?.[source] ?? source).split('{}');
+    translated.set(strings, parts);
+  }
+  let text = parts[0];
+  for (let i = 1; i < parts.length; i++) text += values[i - 1] + parts[i];
+  return text;
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Interface state, settings, colours and fonts taken from the stylesheet, and the links to the
+// other games.
+
+const $ = (id) => document.getElementById(id);
+const deg = (r) => (r * 180) / Math.PI;
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', DECIMAL).replace('-', '−');
+const pct = (t) => Math.round(t * 100) + '%';
+const bar = (p) => fmt(p) + ' bar';
+const store = {
+  get(k, def) {
+    try {
+      const v = localStorage.getItem(k);
+      return v == null ? def : JSON.parse(v);
+    } catch (e) {
+      return def;
+    }
+  },
+  set(k, v) {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+    } catch (e) {}
+  },
+};
+
+const rootStyle = getComputedStyle(document.documentElement);
+const cssVar = (n) => rootStyle.getPropertyValue('--' + n).trim();
+const COL = {};
+['chalk', 'muted', 'dim', 'rule', 'panel', 'asphalt', 'ok', 'warn', 'spd', 'cone', 'coneN', 'coneF'].forEach(
+  (k) => (COL[k] = cssVar(k)),
+);
+const FONT_MONO = cssVar('f-mono') || 'monospace';
+const FONT_DISPLAY = cssVar('f-display') || 'sans-serif';
+/** A stylesheet colour (#rrggbb) with transparency. */
+function alpha(hex, a) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+const COARSE = matchMedia('(pointer: coarse)');
+const LANDPADS = matchMedia('(pointer: coarse) and (orientation: landscape) and (max-height: 540px)');
+const TEMPOS = [1, 0.75, 0.5, 0.35];
+const cfg = Object.assign({ p: 1.6, tempo: 0.5, sup: true, trend: true }, store.get('simtrackstand-cfg', {}));
+if (!PRESSURES.includes(cfg.p)) cfg.p = 1.6;
+if (!TEMPOS.includes(cfg.tempo)) cfg.tempo = 0.5;
+const best = store.get('simtrackstand-best', {});
+const bestKey = () => cfg.p + '@' + cfg.tempo;
+const saveCfg = () => store.set('simtrackstand-cfg', { p: cfg.p, tempo: cfg.tempo, sup: cfg.sup, trend: cfg.trend });
+
+let S = newState();
+let phase = 'ready';
+let paused = false;
+let trace = [];
+let traceT = 0;
+let fall = null;
+let footK = 1; // the left foot on the asphalt: 1 while the bike rests on it, down to 0 after standing up
+let standLoad = 0; // what the foot carried when the rider stood up [kg]
+const keys = { left: 0, right: 0, bl: 0, br: 0, fw: 0, bw: 0 };
+const pads = { left: 0, right: 0, bl: 0, br: 0, fw: 0, bw: 0 };
+
+// The scene is redrawn only while something moves; anything else that changes it calls invalidate().
+let sceneDirty = true;
+let teleDirty = true;
+function invalidate() {
+  sceneDirty = true;
+  teleDirty = true;
+}
+
+// On secpro.pl the games live under the same key, /simtrackstand/<key>/, /simwheelie/<key>/ and
+// /simgp8/<key>/, with the English editions in en/ below them. Elsewhere the other language is the
+// file next to this one, as in dist/; where there is none, the language link is hidden.
+const secpro = /^(.*)\/simtrackstand\/([0-9a-f]{32})\//i.exec(location.pathname);
+if (secpro) {
+  const [, root, key] = secpro;
+  const en = (yes) => (yes ? 'en/' : '');
+  document.querySelectorAll('a[data-sibling]').forEach((a) => {
+    a.href = `${root}/${a.dataset.sibling}/${key}/${en(LANG === 'en')}`;
+    a.removeAttribute('target');
+    a.removeAttribute('rel');
+  });
+  document
+    .querySelectorAll('a[data-lang]')
+    .forEach((a) => (a.href = `${root}/simtrackstand/${key}/${en(LANG !== 'en')}`));
+} else if (!/\/simtrackstand-(pl|en)\.html$/.test(location.pathname)) {
+  document.querySelectorAll('a[data-lang]').forEach((a) => (a.hidden = true));
+}
+
+function segmented(el, val, onPick) {
+  el.querySelectorAll('button').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.v === String(val)));
+    b.addEventListener('click', () => {
+      onPick(b.dataset.v);
+      el.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      b.blur();
+    });
+  });
+}
+
+$('press').innerHTML = PRESSURES.map((p) => `<button data-v="${p}">${fmt(p)}</button>`).join('');
+segmented($('press'), cfg.p, (v) => {
+  cfg.p = Number(v);
+  saveCfg();
+  reset();
+  bikeInfo();
+});
+segmented($('tempo'), cfg.tempo, (v) => {
+  cfg.tempo = Number(v);
+  saveCfg();
+  reset();
+});
+$('view')
+  .querySelectorAll('button')
+  .forEach((b) => {
+    const k = b.dataset.v;
+    b.setAttribute('aria-pressed', String(!!cfg[k]));
+    b.addEventListener('click', () => {
+      cfg[k] = !cfg[k];
+      b.setAttribute('aria-pressed', String(cfg[k]));
+      saveCfg();
+      invalidate();
+      b.blur();
+    });
+  });
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The bike data table, the start and result cards, and the tip after each attempt.
+
+function bikeInfo() {
+  const c = prep(cfg.p);
+  const lock = BIKE.lock * RAD;
+  const s0 = support(c, 0),
+    s1 = support(c, lock);
+  const cm = (m) => fmt(m * 100, 1);
+  $('dblTxt').textContent =
+    i18n`Na motocyklu ${bike()} przechył poza krawędzią śladu opon rośnie dwukrotnie mniej więcej co ${fmt(doubling(cfg.p), 2)} s, jeśli nic nie zrobisz.`;
+  $('specTitle').textContent = i18n`Dane: ${bike()}, ${bar(cfg.p)}`;
+  const rows = [
+    [i18n`Masa motocykla / kierowcy`, `${BIKE.m} / ${BIKE.mr} kg`],
+    [i18n`Środek ciężkości z kierowcą na podnóżkach: wysokość`, `${Math.round(c.h * 100)} cm`],
+    [i18n`Rozstaw osi / środek ciężkości przed tylną osią`, `${fmt(BIKE.L, 2)} / ${fmt(BIKE.b, 2)} m`],
+    [i18n`Wyprzedzenie (trail) / skręt kierownicy`, `${Math.round(BIKE.trail * 100)} cm / ±${BIKE.lock}°`],
+    [i18n`Ślad tylnej opony: szerokość × długość`, `${cm(c.wr)} × ${cm(c.lr)} cm`],
+    [i18n`Ślad przedniej opony: szerokość × długość`, `${cm(c.wf)} × ${cm(c.lf)} cm`],
+    [i18n`Pas podparcia: kierownica prosto / do oporu`, `±${cm(s0.half)} / ±${cm(s1.half)} cm`],
+    [i18n`Opona dochodzi do krawędzi śladu przy przechyle`, `${fmt(c.edge / RAD, 1)}°`],
+    [i18n`Kierownica do oporu przesuwa środek ciężkości w stronę skrętu o`, `${cm(cogShift(c, lock))} cm`],
+    [i18n`Przesunięcie bioder nad podnóżkami`, `±${Math.round(BIKE.du * 100)} cm`],
+    [i18n`Przesunięcie ciała przód–tył`, `±${Math.round(FORE * 100)} cm`],
+    [i18n`Opór toczenia opon`, `${fmt(c.crr, 3)}`],
+  ];
+  $('spec').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  drawSupportDemo();
+}
+
+const bike = () => BIKE.name;
+
+function clearRun(next) {
+  S = newState();
+  step(S, cfg.p, {});
+  trace = [];
+  traceT = 0;
+  fall = null;
+  footK = 1;
+  standLoad = 0;
+  phase = next;
+  paused = false;
+  syncAct();
+  invalidate();
+}
+
+function reset() {
+  clearRun('ready');
+  showReady();
+}
+
+/** A new attempt: the bike rests on the left foot until the rider stands up. */
+function start() {
+  clearRun('setup');
+  $('overlay').hidden = true;
+  if (LANDPADS.matches) $('play').scrollIntoView({ block: 'end', behavior: 'smooth' });
+}
+
+/** Both feet on the pegs: from now on the clock runs and the rider balances. */
+function standUpNow() {
+  if (phase !== 'setup') return;
+  standLoad = S.footLoad / G;
+  standUp(S);
+  phase = 'ride';
+  paused = false;
+  syncAct();
+  invalidate();
+}
+
+function showReady() {
+  const rec = best[bestKey()];
+  $('overlay').hidden = false;
+  $('overlay').innerHTML = `<div class="card">
+    <h2>${bike()}</h2>
+    <p class="meta">${bar(cfg.p)} · ${i18n`tempo ${pct(cfg.tempo)}`}${rec ? ' · ' + i18n`rekord ${fmt(rec)} s` : ''}</p>
+    <p>${i18n`Zaczynasz ze <b>stopą na ziemi</b>. Ustaw kierownicę i biodra tak, żeby nacisk na lewą stopę spadł prawie do zera, i dopiero wtedy wstań na podnóżki.`}</p>
+    <p>${i18n`Potem stoisz w kwadracie jak najdłużej. Balansujesz <b>biodrami</b>, <b>kierownicą</b> i <b>ciałem przód–tył</b>. Z kierownicą skręconą w stronę przechyłu przetocz motocykl kilka centymetrów do przodu, a koła wjadą pod środek ciężkości.`}</p>
+    <p>${i18n`Próba kończy się podpórką, gdy środek ciężkości ucieknie o ${DAB_DEG}° od podparcia, albo gdy opona dotknie linii kwadratu.`}</p>
+    <p class="keys">${i18n`<kbd>A</kbd> <kbd>D</kbd> biodra · <kbd>←</kbd> <kbd>→</kbd> kierownica · <kbd>W</kbd> <kbd>S</kbd> przód i tył · <kbd>Spacja</kbd> wstań`}</p>
+    <p>${cfg.tempo < 1 ? i18n`Tempo ${pct(cfg.tempo)}: czas płynie wolniej, fizyka zostaje ta sama.` + ' ' : ''}${i18n`100% to czas rzeczywisty.`}</p>
+    <button class="btn go" id="goBtn">${i18n`Start (Spacja)`}</button>
+  </div>`;
+  $('goBtn').addEventListener('click', start);
+}
+
+function tipFor(r) {
+  if (r.rolledOut)
+    return i18n`Motocykl wytoczył się z kwadratu. Przetaczaj go krótko i od razu wracaj ciałem na środek. Długie trzymanie przodu albo tyłu wyprowadza motocykl coraz dalej.`;
+  if (r.time < 1.5 && r.load > 3)
+    return i18n`Przy wstawaniu lewa stopa niosła ${kg(r.load)} kg, więc motocykl od razu poleciał w lewo. Zanim wstaniesz, przesuń biodra w prawo, aż nacisk na stopę spadnie prawie do zera. Kierownica skręcona w lewo dokłada nacisku, w prawo go zmniejsza.`;
+  if (r.time < 1.5 && r.load < -2)
+    return i18n`Przy wstawaniu motocykl ciągnął już w prawo, więc od razu poleciał na drugą stronę. Przed wstaniem ustaw biodra bliżej środka albo skręć kierownicę bardziej w lewo, aż nacisk na stopę będzie bliski zera.`;
+  if (r.heldInto)
+    return i18n`Motocykl przewrócił się w stronę skręconej kierownicy. Dopóki koła stoją, skręcona kierownica trzyma środek ciężkości po stronie skrętu. Gdy motocykl zaczyna się kłaść w stronę skrętu, przetocz go do przodu: koła pojadą łukiem pod środek ciężkości.`;
+  if (r.fellAway)
+    return i18n`Motocykl przewrócił się na stronę przeciwną do skrętu kierownicy. Wtedy przetocz go do tyłu: koła pojadą łukiem w drugą stronę, pod środek ciężkości. Pomagają też biodra na wyższym podnóżku.`;
+  if (r.wrongBody)
+    return i18n`Biodra szły w stronę przechyłu. To prostuje motocykl tylko na chwilę, a opona zjeżdża spod środka ciężkości. Gdy motocykl kładzie się w prawo, dociśnij lewy podnóżek i przesuń biodra w lewo. Motocykl pochyli się pod tobą, a opona wróci pod środek ciężkości.`;
+  if (r.time < 4)
+    return i18n`Korekty muszą być małe i wczesne. Patrz na kropkę środka ciężkości w panelu podparcia i reaguj, zanim wyjdzie z zielonego pasa.`;
+  return i18n`Dobrze. Teraz mniejsze i wcześniejsze ruchy bioder, zanim kropka środka ciężkości dojdzie do brzegu zielonego pasa.`;
+}
+
+function finish() {
+  phase = 'over';
+  syncAct();
+  invalidate();
+  const side = Math.sign(S.cogLean) || 1;
+  const r = {
+    time: S.t,
+    load: standLoad,
+    meanCog: S.t > 0 ? deg(S.sumCog / S.t) : 0,
+    intoPct: S.t > 0 ? (100 * S.into) / S.t : 0,
+    rolledOut: S.done === 'roll',
+    heldInto: Math.sign(S.d) === side && Math.abs(S.d) > 15 * RAD,
+    fellAway: Math.sign(S.d) === -side && Math.abs(S.d) > 15 * RAD,
+    wrongBody: Math.sign(S.u) === side && Math.abs(S.u) > 0.4 * BIKE.du,
+  };
+  fall = { phi: S.phi, k: 0, side };
+  const k = bestKey();
+  const isRec = r.time >= 1 && r.time > (best[k] || 0);
+  if (isRec) {
+    best[k] = Math.round(r.time * 10) / 10;
+    store.set('simtrackstand-best', best);
+  }
+  const record = best[k] ? `${fmt(best[k])} s` : '–';
+  $('overlay').hidden = false;
+  $('overlay').innerHTML = `<div class="card">
+    <h2>${r.rolledOut ? i18n`Wyjazd z kwadratu` : i18n`Podpórka`}</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">${i18n`Czas`}</div><div class="v${isRec ? ' rec' : ''}">${fmt(r.time)} s</div></div>
+      <div class="stat"><div class="k">${i18n`Śr. CoG`}</div><div class="v">${fmt(r.meanCog, 1)}°</div></div>
+      <div class="stat"><div class="k">${i18n`Kier. w przechył`}</div><div class="v">${fmt(r.intoPct, 0)}%</div></div>
+    </div>
+    <p class="meta">${i18n`maks. przechył ${fmt(deg(S.maxLean), 0)}° · maks. toczenie ${Math.round(S.maxRoll * 100)} cm · na stopie przy wstaniu ${kg(r.load)} kg · rekord ${record} · ${bar(cfg.p)} · tempo ${pct(cfg.tempo)}`}</p>
+    ${isRec ? `<p><b>${i18n`Nowy rekord.`}</b></p>` : ''}
+    <p class="tip">${tipFor(r)}</p>
+    <button class="btn go" id="goBtn">${i18n`Jeszcze raz (Spacja)`}</button>
+  </div>`;
+  $('goBtn').addEventListener('click', start);
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Keyboard and the touch pads. Both feed the same controls; the stronger of the two wins.
+
+// prettier-ignore
+const KEYMAP = { ArrowLeft: 'left', ArrowRight: 'right', KeyA: 'bl', KeyD: 'br', ArrowUp: 'fw', KeyW: 'fw', ArrowDown: 'bw', KeyS: 'bw' };
+
+function setPaused(on) {
+  if (paused === on) return;
+  paused = on;
+  syncAct();
+  invalidate();
+}
+
+/** Space, Enter and the middle pad: start, stand up on the pegs, or pause and go on. */
+function act() {
+  if (phase === 'ready' || phase === 'over') start();
+  else if (phase === 'setup') standUpNow();
+  else setPaused(!paused);
+}
+
+/** The middle pad says what it does now. */
+function syncAct() {
+  const b = $('actPad');
+  if (!b) return;
+  b.textContent =
+    phase === 'setup' ? i18n`Wstań` : phase === 'ride' ? (paused ? i18n`Dalej` : i18n`Pauza`) : i18n`Start`;
+  b.classList.toggle('up', phase === 'setup');
+}
+
+addEventListener('keydown', (e) => {
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const k = KEYMAP[e.code];
+  if (k) {
+    keys[k] = 1;
+    e.preventDefault();
+    return;
+  }
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (e.repeat) return;
+    if (phase === 'ready' || phase === 'over') start();
+    else if (phase === 'setup') standUpNow();
+  } else if (e.code === 'KeyP' && (phase === 'ride' || phase === 'setup')) {
+    setPaused(!paused);
+  }
+});
+addEventListener('keyup', (e) => {
+  const k = KEYMAP[e.code];
+  if (k) keys[k] = 0;
+});
+addEventListener('blur', () => {
+  Object.keys(keys).forEach((k) => (keys[k] = 0));
+  Object.keys(pads).forEach((k) => (pads[k] = 0));
+  document.querySelectorAll('.pad.on').forEach((p) => p.classList.remove('on'));
+  if (phase === 'ride') setPaused(true);
+});
+
+const padsEl = $('pads');
+if (COARSE.matches) padsEl.classList.add('on');
+// On a phone a long press selects text or opens a menu, and the browser then cancels the touch, so
+// a pad held for a while would let go. Nothing in the game area has a long-press action of its own.
+padsEl.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+$('play').addEventListener('contextmenu', (e) => e.preventDefault());
+padsEl.querySelectorAll('.pad').forEach((p) => {
+  const k = p.dataset.k;
+  const down = (e) => {
+    e.preventDefault();
+    getSelection()?.removeAllRanges();
+    try {
+      p.setPointerCapture(e.pointerId);
+    } catch (err) {}
+    p.classList.add('on');
+    if (k === 'act') return act();
+    pads[k] = 1;
+    if (phase === 'ready' || phase === 'over') start();
+    setPaused(false);
+  };
+  const up = () => {
+    if (k !== 'act') pads[k] = 0;
+    p.classList.remove('on');
+  };
+  p.addEventListener('pointerdown', down);
+  p.addEventListener('pointerup', up);
+  p.addEventListener('pointercancel', up);
+  p.addEventListener('lostpointercapture', up);
+});
+
+/** The controls as the physics sees them. */
+function controls() {
+  const inp = {};
+  for (const k in keys) inp[k] = Math.max(keys[k], pads[k]);
+  return inp;
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Canvas sizing and drawing primitives, in CSS pixels. Lines are never thinner than one pixel, so
+// that they do not vanish when the view is small.
+
+// Canvas sizes come from a ResizeObserver, so the animation loop never has to read the layout.
+const canvasSize = new Map();
+const resizeObserver =
+  typeof ResizeObserver === 'function'
+    ? new ResizeObserver((entries) => {
+        for (const e of entries) {
+          canvasSize.set(e.target, { width: e.contentRect.width, height: e.contentRect.height });
+          if (e.target.id === 'sup') drawSupportDemo();
+        }
+        invalidate();
+      })
+    : null;
+addEventListener('resize', () => {
+  invalidate();
+  drawSupportDemo();
+});
+
+/** Matches the canvas backing store to its size on screen; returns the size in CSS pixels. */
+function fit(c, g) {
+  let r = canvasSize.get(c);
+  if (!r) {
+    r = c.getBoundingClientRect();
+    if (resizeObserver) {
+      canvasSize.set(c, { width: r.width, height: r.height });
+      resizeObserver.observe(c);
+    }
+  }
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  const w = Math.max(1, Math.round(r.width * dpr));
+  const h = Math.max(1, Math.round(r.height * dpr));
+  if (c.width !== w || c.height !== h) {
+    c.width = w;
+    c.height = h;
+  }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { w: r.width, h: r.height };
+}
+
+function poly(g, pts, fill, stroke, lw) {
+  g.beginPath();
+  g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.closePath();
+  if (fill) {
+    g.fillStyle = fill;
+    g.fill();
+  }
+  if (stroke) {
+    g.strokeStyle = stroke;
+    g.lineWidth = lw;
+    g.lineJoin = 'round';
+    g.stroke();
+  }
+}
+
+function line(g, a, b, col, lw) {
+  g.strokeStyle = col;
+  g.lineWidth = Math.max(lw, 1);
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(a[0], a[1]);
+  g.lineTo(b[0], b[1]);
+  g.stroke();
+}
+
+function disc(g, c, r, fill) {
+  g.fillStyle = fill;
+  g.beginPath();
+  g.arc(c[0], c[1], r, 0, Math.PI * 2);
+  g.fill();
+}
+
+function ring(g, c, r, col, lw, a0 = 0, a1 = Math.PI * 2) {
+  g.strokeStyle = col;
+  g.lineWidth = Math.max(lw, 1);
+  g.beginPath();
+  g.arc(c[0], c[1], r, a0, a1);
+  g.stroke();
+}
+
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The bike and the rider in perspective, seen by a camera behind and to the left of the bike.
+// Points are given in the bike's frame (x forward from the rear contact patch, y to the right, z up),
+// rolled by the lean about the line of the tyres and projected by the camera. Solid parts are
+// extruded profiles lit by one lamp; parts are drawn from the furthest to the nearest.
+
+const RIDER_COL = {
+  helmet: '#ece8dd',
+  accent: '#ff6b1a',
+  jersey: '#2f3b48',
+  pants: '#707a87',
+  guard: '#e4e7ea',
+  boot: '#dcd8cc',
+  glove: '#1d2024',
+  visor: '#14171a',
+};
+const LAMP = [-0.42, -0.5, 0.76]; // towards the light, from the bike [unit vector, normalised below]
+
+const v3 = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  len: (a) => Math.hypot(a[0], a[1], a[2]),
+  norm: (a) => {
+    const l = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / l, a[1] / l, a[2] / l];
+  },
+  mix: (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k],
+};
+const LIGHT = v3.norm(LAMP);
+// Ground shift of a shadow per metre of height: the street lamp stands high, ahead and to the left.
+const SHADOW_DIR = [-0.3, 0.5];
+
+/** Camera looking at target T from distance dist, turned az to the left of straight behind, eye at height zc. */
+function makeCamera(T, az, dist, zc, F, cx, cy) {
+  const C = [T[0] - dist * Math.cos(az), T[1] - dist * Math.sin(az), zc];
+  const f = v3.norm(v3.sub(T, C));
+  const r = v3.norm([-f[1], f[0], 0]);
+  const u = v3.cross(f, r);
+  return {
+    C,
+    F,
+    proj(p) {
+      const d = v3.sub(p, C);
+      const z = v3.dot(d, f);
+      return [cx + (F * v3.dot(d, r)) / z, cy - (F * v3.dot(d, u)) / z, z];
+    },
+    depth: (p) => v3.len(v3.sub(p, C)),
+    /** Size on screen of length l [m] at depth z. */
+    px: (l, z) => (F * l) / z,
+  };
+}
+
+/** A point of the bike frame rolled by phi about the line of the tyres. */
+function roll(p, phi) {
+  const c = Math.cos(phi),
+    s = Math.sin(phi);
+  return [p[0], p[1] * c + p[2] * s, -p[1] * s + p[2] * c];
+}
+
+/** A direction of the bike turned to its heading yaw. */
+function turn(p, yaw) {
+  const c = Math.cos(yaw),
+    s = Math.sin(yaw);
+  return [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]];
+}
+
+/** A point of the bike (already rolled) put where the rear tyre stands, turned to the heading. */
+function place(p, pose) {
+  return v3.add(turn(p, pose.yaw || 0), [pose.X || 0, pose.Y || 0, 0]);
+}
+
+/** Rotation of v by angle t about the unit axis k through point o. */
+function rotAbout(v, o, k, t) {
+  const p = v3.sub(v, o);
+  const c = Math.cos(t),
+    s = Math.sin(t);
+  const kxp = v3.cross(k, p);
+  const kp = v3.dot(k, p);
+  return v3.add(o, [
+    p[0] * c + kxp[0] * s + k[0] * kp * (1 - c),
+    p[1] * c + kxp[1] * s + k[1] * kp * (1 - c),
+    p[2] * c + kxp[2] * s + k[2] * kp * (1 - c),
+  ]);
+}
+
+/** Convex hull of 2D points (monotone chain). */
+function hull(pts) {
+  const p = pts.map((q) => [q[0], q[1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (p.length < 3) return p;
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [],
+    hi = [];
+  for (const q of p) {
+    while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop();
+    lo.push(q);
+  }
+  for (let i = p.length - 1; i >= 0; i--) {
+    const q = p[i];
+    while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], q) <= 0) hi.pop();
+    hi.push(q);
+  }
+  return lo.slice(0, -1).concat(hi.slice(0, -1));
+}
+
+/** A stylesheet-free colour #rrggbb lit by k (1 = as is). */
+function lit(hex, k) {
+  return shade(hex, k);
+}
+
+// Geometry of the front end: the steering axis meets the ground one trail ahead of the front patch.
+const RAKE = BIKE.rake * RAD;
+const AXIS = [Math.sin(RAKE), 0, -Math.cos(RAKE)]; // down and forward along the steering axis
+const AXIS_Q = [BIKE.L + BIKE.trail, 0, 0];
+const axisAt = (z) => [AXIS_Q[0] - z * Math.tan(RAKE), 0, z];
+const HEAD = axisAt(1.0);
+const FORK_FWD = [Math.cos(RAKE), 0, Math.sin(RAKE)];
+
+/**
+ * Draws the bike and rider. pose: phi lean, d steering, u hips over the pegs, foot 0…1 (the left
+ * foot on the asphalt), dab 0…1 with side (a foot going down after a fall).
+ */
+function drawBike3d(g, cam, pose) {
+  const bk = BIKE;
+  const phi = pose.phi;
+  const W = (p) => place(roll(p, phi), pose);
+  const S = (p) => cam.proj(W(p));
+  const steerT = -pose.d;
+  const steer = (p) => rotAbout(p, HEAD, AXIS, steerT);
+  // The camera stands behind and to the left, so the parts are drawn in a fixed order from the
+  // furthest to the nearest: front end, the right side, the middle, the left side, the rider's back.
+  const layers = {};
+  const part = (name, draw) => (layers[name] = draw);
+
+  // A solid profile in the x–z plane extruded between y0 and y1; xf maps it into the bike frame.
+  const prism = (prof, y0, y1, col, xf = (p) => p) => {
+    let area = 0;
+    for (let i = 0; i < prof.length; i++) {
+      const [x0, z0] = prof[i],
+        [x1, z1] = prof[(i + 1) % prof.length];
+      area += x0 * z1 - x1 * z0;
+    }
+    const wind = area > 0 ? 1 : -1;
+    const A = prof.map(([x, z]) => W(xf([x, y0, z])));
+    const B = prof.map(([x, z]) => W(xf([x, y1, z])));
+    const faces = [];
+    const face = (pts, n, base) => {
+      const c = pts.reduce((s, q) => v3.add(s, q), [0, 0, 0]).map((v) => v / pts.length);
+      if (v3.dot(n, v3.sub(cam.C, c)) <= 0) return;
+      const k = 0.42 + 0.58 * Math.max(0, v3.dot(n, LIGHT));
+      faces.push({ pts: pts.map((q) => cam.proj(q)), col: lit(base || col, k), z: cam.depth(c) });
+    };
+    for (let i = 0; i < prof.length; i++) {
+      const j = (i + 1) % prof.length;
+      const e = v3.sub(A[j], A[i]);
+      const across = v3.sub(B[i], A[i]);
+      let n = v3.norm(v3.cross(across, e));
+      n = v3.mul(n, wind * (y1 > y0 ? 1 : -1));
+      face([A[i], A[j], B[j], B[i]], n);
+    }
+    const ny = v3.norm(v3.sub(B[0], A[0]));
+    faces.sort((a, b) => b.z - a.z);
+    for (const f of faces) poly(g, f.pts, f.col);
+    const capB = v3.dot(ny, v3.sub(cam.C, B[0])) > 0;
+    const cap = capB ? B : A;
+    const n = capB ? ny : v3.mul(ny, -1);
+    const k = 0.42 + 0.58 * Math.max(0, v3.dot(n, LIGHT));
+    poly(
+      g,
+      cap.map((q) => cam.proj(q)),
+      lit(col, k),
+    );
+    return capB ? y1 : y0;
+  };
+  const circle = (cx, cz, r, n = 22, a0 = 0, a1 = Math.PI * 2) => {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const a = a0 + ((a1 - a0) * i) / (a1 - a0 >= Math.PI * 2 ? n : n - 1);
+      out.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]);
+    }
+    return out;
+  };
+  const seg = (a, b, col, wM, xf = (p) => p) => {
+    const A = S(xf(a)),
+      B = S(xf(b));
+    line(g, A, B, col, cam.px(wM, (A[2] + B[2]) / 2));
+  };
+  // A limb as a lit cylinder: a dark outline and a lighter core towards the lamp.
+  const limb = (a, b, col, wM) => {
+    const A = cam.proj(a),
+      B = cam.proj(b);
+    const wpx = cam.px(wM, (A[2] + B[2]) / 2);
+    line(g, A, B, lit(col, 0.7), wpx);
+    const off = wpx * 0.14;
+    line(g, [A[0] - off, A[1] - off], [B[0] - off, B[1] - off], lit(col, 1.12), wpx * 0.55);
+  };
+
+  // Wheels: a tyre with a tread and sidewalls, the rim and spokes on the side facing us.
+  const wheel = (axle, half, xf, front) => {
+    const prof = circle(axle[0], axle[2], bk.rr, 26);
+    const side = prism(prof, -half, half, '#16181b', xf);
+    const sw = (r, n = 26) => circle(axle[0], axle[2], r, n).map(([x, z]) => S(xf([x, side, z])));
+    poly(g, sw(bk.rr * 0.93), '#1d2023');
+    const rim = sw(0.215);
+    g.strokeStyle = '#b8bdc2';
+    g.lineWidth = Math.max(1, cam.px(0.022, rim[0][2]));
+    g.beginPath();
+    rim.forEach((q, i) => (i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])));
+    g.closePath();
+    g.stroke();
+    const hub = S(xf([axle[0], side, axle[2]]));
+    g.strokeStyle = '#c4c8cc';
+    g.lineWidth = Math.max(0.7, cam.px(0.006, hub[2]));
+    g.beginPath();
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      const p0 = S(xf([axle[0] + Math.cos(a) * 0.04, side * 0.6, axle[2] + Math.sin(a) * 0.04]));
+      const p1 = S(xf([axle[0] + Math.cos(a + 0.42) * 0.21, side, axle[2] + Math.sin(a + 0.42) * 0.21]));
+      g.moveTo(p0[0], p0[1]);
+      g.lineTo(p1[0], p1[1]);
+    }
+    g.stroke();
+    if (front) {
+      const disc0 = sw(0.11, 18);
+      g.strokeStyle = '#8a9096';
+      g.lineWidth = Math.max(1, cam.px(0.025, hub[2]));
+      g.beginPath();
+      disc0.forEach((q, i) => (i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])));
+      g.closePath();
+      g.stroke();
+    }
+    disc(g, hub, cam.px(0.045, hub[2]), '#5c6166');
+    disc(g, hub, cam.px(0.018, hub[2]), '#c9cdd1');
+  };
+
+  const col = bk.color;
+  const frontAxle = [bk.L, 0, bk.rr];
+
+  // Front end, turning with the bars about the steering axis.
+  part('frontWheel', () => wheel(frontAxle, 0.055, steer, true));
+  part('fork', () => {
+    for (const y of [-0.075, 0.075]) {
+      const lo = v3.add(frontAxle, [0, y, 0]);
+      const mid = v3.add(lo, v3.mul(AXIS, -0.36));
+      const top = v3.add(lo, v3.mul(AXIS, -0.78));
+      seg(lo, mid, '#d4a52a', 0.042, steer);
+      seg(mid, top, '#2a2d31', 0.052, steer);
+    }
+    const f = (x, z) => v3.add(axisAt(z), v3.mul(FORK_FWD, x));
+    const fender = [
+      [-0.3, 0.83],
+      [0.05, 0.86],
+      [0.36, 0.8],
+      [0.38, 0.76],
+      [0.05, 0.81],
+      [-0.28, 0.79],
+    ];
+    prism(fender, -0.07, 0.07, '#1f2226', (p) => steer(v3.add(f(p[0], p[2]), [0, p[1], 0])));
+    const clamp3 = [
+      [-0.06, 0.84],
+      [0.12, 0.84],
+      [0.12, 0.88],
+      [-0.06, 0.88],
+    ];
+    prism(clamp3, -0.1, 0.1, '#3a3f45', (p) => steer(v3.add(f(p[0], p[2]), [0, p[1], 0])));
+    const cowl = [
+      [0.05, 0.86],
+      [0.18, 0.9],
+      [0.2, 1.08],
+      [0.08, 1.12],
+    ];
+    prism(cowl, -0.1, 0.1, '#1b1d20', (p) => steer(v3.add(f(p[0], p[2]), [0, p[1], 0])));
+  });
+
+  // Frame, motor, battery case and red side panels.
+  part('frame', () => {
+    seg([0.28, 0, 0.4], [0.47, 0, 0.78], '#d8a21f', 0.05);
+    prism(circle(0.66, 0.36, 0.085, 18), -0.085, 0.085, '#3a3f45');
+    prism(
+      [
+        [1.0, 0.99],
+        [0.93, 1.02],
+        [0.44, 0.88],
+        [0.34, 0.7],
+        [0.44, 0.44],
+        [0.78, 0.38],
+        [0.99, 0.66],
+      ],
+      -0.1,
+      0.1,
+      '#2b2f34',
+    );
+  });
+  for (const sideY of [-1, 1]) {
+    part(sideY < 0 ? 'panelL' : 'panelR', () => {
+      prism(
+        [
+          [0.93, 0.95],
+          [0.55, 0.86],
+          [0.42, 0.74],
+          [0.5, 0.55],
+          [0.9, 0.6],
+        ],
+        sideY * 0.112,
+        sideY * 0.125,
+        col,
+      );
+      if (sideY < 0) numberOn(g, cam, W, [0.66, -0.126, 0.73], 0.16, '8', '#16181a', [1, 0, 0], [0, 0, 1]);
+    });
+  }
+
+  // Swingarm, rear shock, rear wheel, seat and tail.
+  for (const sideY of [-1, 1]) {
+    part(sideY < 0 ? 'armL' : 'armR', () =>
+      prism(
+        [
+          [-0.05, 0.27],
+          [0.6, 0.38],
+          [0.6, 0.46],
+          [-0.05, 0.34],
+        ],
+        sideY * 0.07,
+        sideY * 0.1,
+        '#9aa1a8',
+      ),
+    );
+  }
+  part('rearWheel', () => wheel([0, 0, bk.rr], 0.062, (p) => p, false));
+  part('seat', () =>
+    prism(
+      [
+        [-0.12, 0.86],
+        [0.8, 0.86],
+        [0.84, 0.9],
+        [0.79, 0.94],
+        [-0.1, 0.93],
+      ],
+      -0.088,
+      0.088,
+      '#17191c',
+    ),
+  );
+  part('tail', () => {
+    prism(
+      [
+        [-0.42, 0.79],
+        [-0.4, 0.83],
+        [0.05, 0.87],
+        [0.26, 0.85],
+        [0.26, 0.76],
+        [0.0, 0.72],
+        [-0.39, 0.745],
+      ],
+      -0.072,
+      0.072,
+      col,
+    );
+    prism(
+      [
+        [-0.43, 0.755],
+        [-0.405, 0.755],
+        [-0.405, 0.79],
+        [-0.43, 0.79],
+      ],
+      -0.04,
+      0.04,
+      '#ff3b30',
+    );
+    const tl = S([-0.43, 0, 0.772]);
+    const glow = g.createRadialGradient(tl[0], tl[1], 0, tl[0], tl[1], cam.px(0.18, tl[2]));
+    glow.addColorStop(0, 'rgba(255,60,48,0.45)');
+    glow.addColorStop(1, 'rgba(255,60,48,0)');
+    g.fillStyle = glow;
+    g.fillRect(tl[0] - 200, tl[1] - 200, 400, 400);
+    prism(
+      [
+        [-0.36, 0.5],
+        [-0.345, 0.5],
+        [-0.345, 0.66],
+        [-0.36, 0.66],
+      ],
+      -0.095,
+      0.095,
+      '#ece8dd',
+    );
+    numberOn(g, cam, W, [-0.362, 0, 0.58], 0.13, '8', '#16181a', [0, 1, 0], [0, 0, 1]);
+  });
+  for (const sideY of [-1, 1])
+    part(sideY < 0 ? 'pegL' : 'pegR', () =>
+      prism(
+        [
+          [0.37, 0.355],
+          [0.47, 0.355],
+          [0.47, 0.385],
+          [0.37, 0.385],
+        ],
+        sideY * 0.11,
+        sideY * 0.25,
+        '#4a5056',
+      ),
+    );
+
+  // Handlebar, turning with the steering.
+  const barAt = (y) => steer([HEAD[0] - 0.08, y, HEAD[2] + 0.1]);
+  const gripL = barAt(-0.39),
+    gripR = barAt(0.39);
+  part('bar', () => {
+    const c0 = steer([HEAD[0], 0, HEAD[2] + 0.02]);
+    seg(c0, barAt(0), '#2a2d31', 0.05);
+    seg(barAt(-0.32), barAt(0.32), '#1b1d20', 0.026);
+    seg(gripL, barAt(-0.3), '#0c0d0e', 0.045);
+    seg(gripR, barAt(0.3), '#0c0d0e', 0.045);
+    seg(barAt(-0.27), steer([HEAD[0] + 0.05, -0.35, HEAD[2] + 0.08]), '#8a9096', 0.012);
+    seg(barAt(0.27), steer([HEAD[0] + 0.05, 0.35, HEAD[2] + 0.08]), '#8a9096', 0.012);
+  });
+
+  // The rider. The hips move over the pegs, the torso leans about a third of the bike's lean.
+  const rig = riderRig(pose);
+  const { T, tilt } = rig;
+  const drawLeg = (side) => {
+    const { hj, knee, an } = side < 0 ? rig.legL : rig.legR;
+    limb(hj, knee, RIDER_COL.pants, 0.16);
+    limb(knee, an, RIDER_COL.pants, 0.12);
+    limb(v3.add(knee, [0.02, 0, 0.02]), v3.mix(knee, an, 0.45), RIDER_COL.guard, 0.07);
+    const fwd = W([1, 0, 0]);
+    const up = [0, 0, 1];
+    const lat = v3.cross(up, fwd);
+    const boot = (x, y, z) => cam.proj(v3.add(an, v3.add(v3.mul(fwd, x), v3.add(v3.mul(lat, y), [0, 0, z]))));
+    const pts = [];
+    for (const x of [-0.1, 0.13])
+      for (const y of [-0.045, 0.045]) for (const z of [-0.05, 0.13]) pts.push(boot(x, y, z));
+    poly(g, hull(pts), lit(RIDER_COL.boot, 0.9));
+    const sole = [];
+    for (const x of [-0.1, 0.13])
+      for (const y of [-0.047, 0.047]) for (const z of [-0.06, -0.035]) sole.push(boot(x, y, z));
+    poly(g, hull(sole), '#1b1d20');
+  };
+  part('legR', () => drawLeg(1));
+  part('legL', () => drawLeg(-1));
+
+  const drawArm = (side) => {
+    const { sh, el, grip } = side < 0 ? rig.armL : rig.armR;
+    limb(sh, el, RIDER_COL.jersey, 0.11);
+    limb(el, grip, RIDER_COL.jersey, 0.09);
+    const a = cam.proj(v3.mix(sh, el, 0.3)),
+      b = cam.proj(v3.mix(el, grip, 0.75));
+    line(g, a, b, RIDER_COL.accent, cam.px(0.016, a[2]));
+    const G0 = cam.proj(grip);
+    disc(g, G0, cam.px(0.048, G0[2]), RIDER_COL.glove);
+  };
+  part('handR', () => drawArm(1));
+
+  // Torso as a tapered box, the back with the number.
+  const torso = () => {
+    const c = (x, y, z) => T([x, y, z]);
+    const wy = (k) => 0.16 + 0.05 * k;
+    const corner = (fx, sy, k) => c(0.22 * k + fx * (0.09 + 0.01 * k), sy * wy(k), 0.46 * k);
+    const box = {
+      back: [corner(-1, -1, 0), corner(-1, 1, 0), corner(-1, 1, 1), corner(-1, -1, 1)],
+      front: [corner(1, 1, 0), corner(1, -1, 0), corner(1, -1, 1), corner(1, 1, 1)],
+      left: [corner(1, -1, 0), corner(-1, -1, 0), corner(-1, -1, 1), corner(1, -1, 1)],
+      right: [corner(-1, 1, 0), corner(1, 1, 0), corner(1, 1, 1), corner(-1, 1, 1)],
+      top: [corner(-1, -1, 1), corner(-1, 1, 1), corner(1, 1, 1), corner(1, -1, 1)],
+    };
+    const center = c(0.11, 0, 0.23);
+    const faces = [];
+    for (const [name, pts] of Object.entries(box)) {
+      const m = pts.reduce((s, q) => v3.add(s, q), [0, 0, 0]).map((v) => v / 4);
+      const n = v3.norm(v3.sub(m, center));
+      if (v3.dot(n, v3.sub(cam.C, m)) <= 0) continue;
+      faces.push({ name, pts, z: cam.depth(m), k: 0.45 + 0.55 * Math.max(0, v3.dot(n, LIGHT)) });
+    }
+    faces.sort((a, b) => b.z - a.z);
+    for (const f of faces) {
+      poly(
+        g,
+        f.pts.map((q) => cam.proj(q)),
+        lit(RIDER_COL.jersey, f.k),
+      );
+      if (f.name === 'back') {
+        const m = v3.mix(f.pts[0], f.pts[2], 0.5);
+        const up = v3.norm(v3.sub(v3.mix(f.pts[3], f.pts[2], 0.5), v3.mix(f.pts[0], f.pts[1], 0.5)));
+        const right = v3.norm(v3.sub(f.pts[1], f.pts[0]));
+        numberOn(g, cam, (p) => p, v3.add(m, v3.mul(up, 0.02)), 0.2, '8', RIDER_COL.accent, right, up);
+      }
+      if (f.name === 'left' || f.name === 'back') {
+        const a = cam.proj(v3.mix(f.pts[0], f.pts[3], 0.15)),
+          b = cam.proj(v3.mix(f.pts[0], f.pts[3], 0.85));
+        if (f.name === 'left') line(g, a, b, RIDER_COL.accent, cam.px(0.02, a[2]));
+      }
+    }
+    // Waist band of the pants.
+    const wb = [c(-0.1, -0.165, 0), c(-0.1, 0.165, 0), c(-0.1, 0.165, 0.07), c(-0.1, -0.165, 0.07)].map((q) =>
+      cam.proj(q),
+    );
+    poly(g, wb, lit(RIDER_COL.pants, 0.9));
+  };
+  part('torso', torso);
+  part('handL', () => drawArm(-1));
+
+  // Helmet with the peak and goggles, looking forward.
+  part('helmet', () => {
+    const neckA = T([0.22, 0, 0.46]),
+      neckB = T([0.26, 0, 0.56]);
+    limb(neckA, neckB, '#1b1f24', 0.1);
+    const hc = T([0.3, 0, 0.7]);
+    const H = cam.proj(hc);
+    const r = cam.px(0.14, H[2]);
+    const grad = g.createRadialGradient(H[0] - r * 0.35, H[1] - r * 0.4, r * 0.1, H[0], H[1], r);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.55, RIDER_COL.helmet);
+    grad.addColorStop(1, '#9d9a92');
+    disc(g, H, r, grad);
+    const hp = (x, y, z) => cam.proj(v3.add(hc, roll([x, y, z], tilt)));
+    // Orange stripe over the top, front to back.
+    g.strokeStyle = RIDER_COL.accent;
+    g.lineWidth = Math.max(1, r * 0.16);
+    g.lineCap = 'round';
+    g.beginPath();
+    for (let i = 0; i <= 10; i++) {
+      const a = Math.PI * (0.15 + 0.7 * (i / 10));
+      const p = hp(Math.cos(a) * 0.138, 0, Math.sin(a) * 0.138);
+      i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]);
+    }
+    g.stroke();
+    // Peak and goggles strap.
+    poly(
+      g,
+      [hp(0.08, -0.09, 0.11), hp(0.25, -0.08, 0.08), hp(0.25, 0.08, 0.08), hp(0.08, 0.09, 0.11)],
+      lit('#2a2d31', 1),
+    );
+    g.strokeStyle = '#1b1f24';
+    g.lineWidth = Math.max(1, r * 0.16);
+    g.beginPath();
+    for (let i = 0; i <= 12; i++) {
+      const a = Math.PI * (0.5 + i / 12);
+      const p = hp(Math.cos(a) * 0.14 + 0.02, Math.sin(a) * 0.14, 0.0);
+      i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]);
+    }
+    g.stroke();
+  });
+
+  const footOut = pose.foot > 0.3 || (pose.dab > 0.3 && pose.side < 0);
+  // prettier-ignore
+  const order = ['frontWheel', 'fork', 'legR', 'panelR', 'armR', 'pegR', 'frame', 'bar', 'handR', 'seat',
+    'panelL', 'armL', 'pegL', footOut ? null : 'legL', 'rearWheel', 'tail', footOut ? 'legL' : null, 'torso', 'handL', 'helmet'];
+  for (const name of order) if (name) layers[name]();
+}
+
+/** Where the rider's joints are in the world: hips over the pegs, legs and arms reaching the pegs and grips. */
+function riderRig(pose) {
+  const phi = pose.phi;
+  const yaw = pose.yaw || 0;
+  const W = (p) => place(roll(p, phi), pose);
+  const dir = (p) => turn(roll(p, phi), yaw);
+  const steer = (p) => rotAbout(p, HEAD, AXIS, -pose.d);
+  const barAt = (y) => steer([HEAD[0] - 0.08, y, HEAD[2] + 0.1]);
+  // With a foot reaching down to the asphalt the hips drop and the other knee bends.
+  const sit = 0.1 * Math.max(pose.foot, pose.dab);
+  const fore = pose.w || 0;
+  const hip = [0.3 + fore, pose.u, 0.97 - sit - 0.25 * fore * fore];
+  const hipW = W(hip);
+  const tilt = 0.35 * phi;
+  // The torso leans over the bars as the hips go back, and straightens as they come forward.
+  const pitch = -0.9 * fore;
+  const T = (off) =>
+    v3.add(
+      hipW,
+      turn(
+        roll(
+          [
+            off[0] * Math.cos(pitch) + off[2] * Math.sin(pitch),
+            off[1],
+            -off[0] * Math.sin(pitch) + off[2] * Math.cos(pitch),
+          ],
+          tilt,
+        ),
+        yaw,
+      ),
+    );
+  const pegW = (side) => W([0.42, side * 0.19, 0.42]);
+  const groundFoot = (side) => place([0.48, side * FOOT_ARM + Math.sin(phi) * 0.1, 0.06], pose);
+  const ankle = (side) => {
+    if (side < 0 && pose.foot > 0) return v3.mix(pegW(side), groundFoot(side), pose.foot);
+    if (pose.dab && side === pose.side) return v3.mix(pegW(side), groundFoot(side), pose.dab);
+    return pegW(side);
+  };
+  const leg = (side) => {
+    const hj = W(v3.add(hip, [0, side * 0.12, 0]));
+    const an = ankle(side);
+    const dd = v3.sub(an, hj);
+    const L0 = Math.min(v3.len(dd), 0.92);
+    const lt = 0.46,
+      ls = 0.47;
+    const along = (lt * lt - ls * ls + L0 * L0) / (2 * L0);
+    const out = Math.sqrt(Math.max(0, lt * lt - along * along));
+    const dn = v3.norm(dd);
+    let bend = v3.norm(dir([1, side * 0.3, 0.05]));
+    bend = v3.norm(v3.sub(bend, v3.mul(dn, v3.dot(bend, dn))));
+    const knee = v3.add(v3.add(hj, v3.mul(dn, along)), v3.mul(bend, out));
+    return { hj, knee, an };
+  };
+  const arm = (side) => {
+    const sh = T([0.22, side * 0.2, 0.46]);
+    const grip = W(barAt(side * 0.39));
+    const dd = v3.sub(grip, sh);
+    const L0 = Math.min(v3.len(dd), 0.63);
+    const la = 0.32;
+    const out = Math.sqrt(Math.max(0, la * la - (L0 / 2) * (L0 / 2)));
+    const dn = v3.norm(dd);
+    let bend = v3.norm(turn([0.1, side, -0.5], yaw));
+    bend = v3.norm(v3.sub(bend, v3.mul(dn, v3.dot(bend, dn))));
+    const el = v3.add(v3.add(sh, v3.mul(dn, L0 / 2)), v3.mul(bend, out));
+    return { sh, el, grip };
+  };
+  return { W, steer, barAt, hipW, tilt, T, legL: leg(-1), legR: leg(1), armL: arm(-1), armR: arm(1) };
+}
+
+/**
+ * The shadow the lamp casts on the asphalt, drawn in black on g; the caller makes it transparent.
+ * Returns the box on screen that the shadow covers, [left, top, right, bottom].
+ */
+function shadowShapes(g, cam, pose) {
+  const rig = riderRig(pose);
+  const { W, steer, T } = rig;
+  const box = [Infinity, Infinity, -Infinity, -Infinity];
+  const sh = (p) => {
+    const q = cam.proj([p[0] + p[2] * SHADOW_DIR[0], p[1] + p[2] * SHADOW_DIR[1], 0]);
+    box[0] = Math.min(box[0], q[0]);
+    box[1] = Math.min(box[1], q[1]);
+    box[2] = Math.max(box[2], q[0]);
+    box[3] = Math.max(box[3], q[1]);
+    return q;
+  };
+  const blob = (pts) => poly(g, hull(pts.map(sh)), '#000');
+  const bar = (a, b, wM) => {
+    const A = sh(a),
+      B = sh(b);
+    line(g, A, B, '#000', Math.max(1, cam.px(wM, (A[2] + B[2]) / 2)));
+  };
+  const wheel = (x, xf) => {
+    const out = [];
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      for (const y of [-0.06, 0.06]) out.push(W(xf([x + Math.cos(a) * BIKE.rr, y, BIKE.rr + Math.sin(a) * BIKE.rr])));
+    }
+    return out;
+  };
+  blob(wheel(0, (p) => p));
+  blob(wheel(BIKE.L, steer));
+  const body = [];
+  for (const [x, z] of [
+    [-0.43, 0.76],
+    [-0.4, 0.84],
+    [0.8, 0.94],
+    [1.0, 1.0],
+    [0.99, 0.62],
+    [0.75, 0.3],
+    [0.4, 0.3],
+    [0.0, 0.3],
+  ])
+    for (const y of [-0.1, 0.1]) body.push(W([x, y, z]));
+  blob(body);
+  bar(W(steer([BIKE.L, 0, BIKE.rr])), W(steer(HEAD)), 0.12);
+  bar(W(rig.barAt(-0.39)), W(rig.barAt(0.39)), 0.05);
+  const torso = [];
+  for (const x of [-0.1, 0.32]) for (const y of [-0.2, 0.2]) for (const z of [0, 0.5]) torso.push(T([x, y, z]));
+  blob(torso);
+  const head = [];
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    head.push(
+      T([0.3 + Math.cos(a) * 0.15, Math.sin(a) * 0.15, 0.7]),
+      T([0.3, Math.cos(a) * 0.15, 0.7 + Math.sin(a) * 0.15]),
+    );
+  }
+  blob(head);
+  for (const L of [rig.legL, rig.legR]) {
+    bar(L.hj, L.knee, 0.16);
+    bar(L.knee, L.an, 0.13);
+    blob([
+      L.an,
+      v3.add(L.an, [0.14, 0, 0]),
+      v3.add(L.an, [-0.12, 0, 0]),
+      v3.add(L.an, [0, 0.05, -0.05]),
+      v3.add(L.an, [0, -0.05, -0.05]),
+    ]);
+  }
+  for (const A of [rig.armL, rig.armR]) {
+    bar(A.sh, A.el, 0.11);
+    bar(A.el, A.grip, 0.09);
+  }
+  return box;
+}
+
+/** A number of height size [m] centred at point c (already in world) on the plane spanned by unit right and up. */
+function numberOn(g, cam, W, c, size, text, col, right, up) {
+  const o = W(c);
+  const r = v3.sub(W(v3.add(c, v3.mul(right, size))), o);
+  const u = v3.sub(W(v3.add(c, v3.mul(up, size))), o);
+  // Only on a face turned towards the camera.
+  const n = v3.cross(r, u);
+  if (Math.abs(v3.dot(v3.norm(n), v3.norm(v3.sub(cam.C, o)))) < 0.12) return;
+  const O = cam.proj(o),
+    R = cam.proj(v3.add(o, r)),
+    U = cam.proj(v3.add(o, u));
+  const ax = (R[0] - O[0]) / size,
+    ay = (R[1] - O[1]) / size,
+    bx = -(U[0] - O[0]) / size,
+    by = -(U[1] - O[1]) / size;
+  const facing = v3.dot(n, v3.sub(cam.C, o)) > 0;
+  const k = size / 100;
+  g.save();
+  g.transform((facing ? ax : -ax) * k, (facing ? ay : -ay) * k, bx * k, by * k, O[0], O[1]);
+  g.fillStyle = col;
+  g.font = `700 100px ${FONT_DISPLAY}`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, 0, 0);
+  g.restore();
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// A square in the city at night, seen from behind and to the left of the bike: the street with its
+// lamps and houses, the asphalt with the chalk box and the cones, the shadow, the bike and rider,
+// the CoG over its support, and the support panel with the contact patches seen from above.
+
+const cv = $('cv');
+const ctx = cv.getContext('2d');
+const CAM_T = [0.62, 0.05, 0.84]; // the camera looks at this point [m]
+const CAM_AZ = 30 * RAD; // and stands this far to the left of straight behind
+const CAM_DIST = 4.1; // [m]
+const CAM_Z = 1.85; // eye height [m]
+const backdrop = { key: '', canvas: null };
+const shadowLayer = document.createElement('canvas');
+const SHADOW_RES = 0.4; // pixels of the shadow layer per CSS pixel
+
+/** A seeded random number generator, so that the city looks the same every time. */
+function seeded(seed) {
+  let r = seed;
+  return () => (r = (r * 16807) % 2147483647) / 2147483647;
+}
+
+function sceneLayout(w, h) {
+  const narrow = w < 560;
+  const supW = cfg.sup ? clamp(w * (narrow ? 0.32 : 0.25), 112, 250) : 0;
+  const room = w - supW;
+  const F = Math.min(h * 1.32, room * 1.55);
+  const cam = makeCamera(CAM_T, CAM_AZ, CAM_DIST, CAM_Z, F, room * 0.5, h * (narrow ? 0.6 : 0.56));
+  return { narrow, supW, cam };
+}
+
+/** The part of a ground polygon in front of the camera, projected; null when nothing is left. */
+function projPoly(cam, pts, near = 0.6) {
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i],
+      b = pts[(i + 1) % pts.length];
+    const da = cam.proj(a)[2],
+      db = cam.proj(b)[2];
+    if (da >= near) out.push(cam.proj(a));
+    if (da >= near !== db >= near) out.push(cam.proj(v3.mix(a, b, (near - da) / (db - da))));
+  }
+  return out.length >= 3 ? out : null;
+}
+
+/** A soft round glow lying on the ground around c with radius r [m]. */
+function groundGlow(g, cam, c, r, col, a) {
+  const P = cam.proj(c);
+  const ex = cam.proj(v3.add(c, [0, r, 0])),
+    ez = cam.proj(v3.add(c, [r, 0, 0])),
+    en = cam.proj(v3.add(c, [-Math.min(r, 2), 0, 0]));
+  const rx = Math.max(4, Math.hypot(ex[0] - P[0], ex[1] - P[1]));
+  const ry = Math.max(2, (Math.abs(en[1] - P[1]) + Math.abs(ez[1] - P[1])) / 2);
+  g.save();
+  g.translate(P[0], P[1]);
+  g.scale(1, ry / rx);
+  const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+  gr.addColorStop(0, alpha(col, a));
+  gr.addColorStop(0.55, alpha(col, a * 0.45));
+  gr.addColorStop(1, alpha(col, 0));
+  g.fillStyle = gr;
+  g.fillRect(-rx, -rx, 2 * rx, 2 * rx);
+  g.restore();
+}
+
+/** Everything that never moves: sky, houses, street, asphalt, chalk and cones. */
+function paintBackdrop(g, cam, w, h) {
+  const rnd = seeded(8);
+  const horizon = cam.proj([CAM_T[0] + 1e5 * Math.cos(CAM_AZ), CAM_T[1] + 1e5 * Math.sin(CAM_AZ), 0])[1];
+  const hy = clamp(horizon, 0, h);
+  const sky = g.createLinearGradient(0, 0, 0, hy);
+  sky.addColorStop(0, '#080b10');
+  sky.addColorStop(0.7, '#141a22');
+  sky.addColorStop(1, '#2a2a2c');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, hy + 1);
+  g.fillStyle = 'rgba(236,232,221,0.5)';
+  for (let i = 0; i < 26; i++) g.fillRect(rnd() * w, rnd() * hy * 0.55, 1, 1);
+  const ground = g.createLinearGradient(0, hy, 0, h);
+  ground.addColorStop(0, '#16181b');
+  ground.addColorStop(1, '#2a2e33');
+  g.fillStyle = ground;
+  g.fillRect(0, hy, w, h - hy);
+
+  // Houses beyond the street on the right and across the far end of the square.
+  const house = (pts, col) => {
+    const q = projPoly(cam, pts);
+    if (q) poly(g, q, col);
+  };
+  const windows = (o, along, wd, ht, floors, cols) => {
+    for (let f = 0; f < floors; f++)
+      for (let k = 0; k < cols; k++) {
+        const r = rnd();
+        const col =
+          r < 0.17
+            ? `rgba(255,${190 + Math.round(rnd() * 40)},${110 + Math.round(rnd() * 50)},${0.42 + rnd() * 0.3})`
+            : r < 0.21
+              ? 'rgba(150,190,255,0.32)'
+              : 'rgba(120,140,170,0.05)';
+        const x0 = 0.8 + k * (wd / cols),
+          z0 = 4.2 + f * 3.1;
+        const a = v3.add(o, v3.add(v3.mul(along, x0), [0, 0, z0]));
+        const b = v3.add(a, v3.mul(along, 1.0));
+        house([a, b, v3.add(b, [0, 0, 1.4]), v3.add(a, [0, 0, 1.4])], col);
+      }
+  };
+  const shop = (o, along, wd) => {
+    for (let x = 1; x < wd - 2; x += 4.2) {
+      const a = v3.add(o, v3.mul(along, x));
+      const b = v3.add(a, v3.mul(along, 3));
+      const lit = rnd() < 0.55;
+      house(
+        [a, b, v3.add(b, [0, 0, 2.6]), v3.add(a, [0, 0, 2.6])],
+        lit ? 'rgba(255,214,150,0.32)' : 'rgba(120,140,170,0.08)',
+      );
+    }
+  };
+  // Far end, facing the camera, from the left to the street.
+  for (let y = -6; y < 31; ) {
+    const wd = 9 + rnd() * 9;
+    const ht = 10 + rnd() * 18;
+    const x = 78;
+    const o = [x, y, 0];
+    const along = [0, 1, 0];
+    house([o, [x, y + wd, 0], [x, y + wd, ht], [x, y, ht]], rnd() < 0.5 ? '#12161c' : '#151a21');
+    windows(o, along, wd, ht, Math.floor((ht - 4.5) / 3.1), Math.max(1, Math.floor(wd / 2.6)));
+    shop(o, along, wd);
+    y += wd + 0.4;
+  }
+  // The right side of the street, from the far end towards the camera, so the near ones cover the far.
+  const right = [];
+  for (let x = 6; x < 78; ) {
+    const wd = 10 + rnd() * 10;
+    right.push({ x, wd, ht: 9 + rnd() * 16, tone: rnd() });
+    x += wd + 0.5;
+  }
+  for (let i = right.length - 1; i >= 0; i--) {
+    const { x, wd, ht, tone } = right[i];
+    const y = 31;
+    house(
+      [
+        [x, y, 0],
+        [x, y + 12, 0],
+        [x, y + 12, ht],
+        [x, y, ht],
+      ],
+      '#0b0e12',
+    );
+    const o = [x, y, 0];
+    house([o, [x + wd, y, 0], [x + wd, y, ht], [x, y, ht]], tone < 0.5 ? '#141920' : '#181d25');
+    windows(o, [1, 0, 0], wd, ht, Math.floor((ht - 4.5) / 3.1), Math.max(1, Math.floor(wd / 2.6)));
+    shop(o, [1, 0, 0], wd);
+  }
+
+  // Haze over the city: the glow of the street lights near the horizon.
+  const haze = g.createLinearGradient(0, hy * 0.35, 0, hy);
+  haze.addColorStop(0, 'rgba(40,40,44,0)');
+  haze.addColorStop(1, 'rgba(58,50,44,0.55)');
+  g.fillStyle = haze;
+  g.fillRect(0, hy * 0.35, w, hy * 0.65 + 1);
+
+  // The street: pavement, kerb, the carriageway with its centre line, the pavement by the houses.
+  const strip = (y0, y1, col) =>
+    house(
+      [
+        [-6, y0, 0],
+        [200, y0, 0],
+        [200, y1, 0],
+        [-6, y1, 0],
+      ],
+      col,
+    );
+  strip(10, 12, '#24272b');
+  strip(12, 28, '#141618');
+  strip(28, 31, '#1e2124');
+  const gl = (a, b, col, wM) => {
+    const q = projPoly(cam, [a, b, v3.add(b, [0, 0.001, 0])]);
+    if (q) line(g, q[0], q[1], col, Math.max(0.6, cam.px(wM, (q[0][2] + q[1][2]) / 2)));
+  };
+  gl([-6, 10, 0], [200, 10, 0], 'rgba(200,204,208,0.35)', 0.12);
+  gl([-6, 12, 0], [200, 12, 0], 'rgba(200,204,208,0.18)', 0.1);
+  for (let x = -4; x < 120; x += 6) gl([x, 20, 0], [x + 3, 20, 0], 'rgba(236,232,221,0.22)', 0.12);
+
+  // Asphalt grain on the square.
+  for (let i = 0; i < 2600; i++) {
+    const x = -3 + rnd() * 40,
+      y = -5 + rnd() * 15;
+    const P = cam.proj([x, y, 0]);
+    if (P[2] < 0.8 || P[0] < 0 || P[0] > w || P[1] < hy || P[1] > h) continue;
+    const s = Math.max(0.6, cam.px(0.03, P[2]));
+    g.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.16)';
+    g.fillRect(P[0], P[1], s, s * 0.6);
+  }
+  // Patches of newer asphalt and a crack, so the square is not a flat colour.
+  for (let i = 0; i < 6; i++) {
+    const cx = 2 + rnd() * 18,
+      cy = -3 + rnd() * 12,
+      r = 0.8 + rnd() * 1.6;
+    const pts = [];
+    for (let k = 0; k < 9; k++) {
+      const a = (k / 9) * Math.PI * 2;
+      const rr = r * (0.75 + rnd() * 0.4);
+      pts.push([cx + Math.cos(a) * rr * 1.4, cy + Math.sin(a) * rr, 0]);
+    }
+    const q = projPoly(cam, pts);
+    if (q) poly(g, q, 'rgba(0,0,0,0.12)');
+  }
+
+  // Lamplight: pools under the street lamps and the lamp that lights the bike, behind the camera.
+  for (let x = 10; x < 90; x += 14) groundGlow(g, cam, [x, 11.5, 0], 4.5, '#ffd9a0', 0.16);
+  groundGlow(g, cam, [0.8, 0.2, 0], 5.5, '#ffe2b8', 0.2);
+
+  // The trackstand box in chalk, and the start mark.
+  const chalk = alpha(COL.chalk, 0.6);
+  const box = [
+    [-0.9, -1.05],
+    [2.3, -1.05],
+    [2.3, 1.05],
+    [-0.9, 1.05],
+  ];
+  for (let i = 0; i < 4; i++) {
+    const [x0, y0] = box[i],
+      [x1, y1] = box[(i + 1) % 4];
+    gl([x0, y0, 0], [x1, y1, 0], chalk, 0.06);
+  }
+  gl([-0.9, 0, 0], [-0.55, 0, 0], chalk, 0.05);
+  gl([2.3, 0, 0], [1.95, 0, 0], chalk, 0.05);
+
+  // Cones of a GP8 layout further on: the near one blue on the left, the far one red on the right.
+  const cone = (x, y, col) => {
+    const base = [];
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      base.push(cam.proj([x + Math.cos(a) * 0.19, y + Math.sin(a) * 0.19, 0]));
+    }
+    poly(g, hull(base), 'rgba(0,0,0,0.4)');
+    const top = cam.proj([x, y, 0.45]);
+    const l = cam.proj([x - 0.02, y - 0.13, 0.02]),
+      r = cam.proj([x + 0.02, y + 0.13, 0.02]);
+    poly(g, [l, r, top], col);
+    const band = (z0, z1) => {
+      const k0 = 0.13 * (1 - z0 / 0.45),
+        k1 = 0.13 * (1 - z1 / 0.45);
+      poly(
+        g,
+        [cam.proj([x, y - k0, z0]), cam.proj([x, y + k0, z0]), cam.proj([x, y + k1, z1]), cam.proj([x, y - k1, z1])],
+        'rgba(255,255,255,0.85)',
+      );
+    };
+    band(0.18, 0.25);
+  };
+  cone(6.5, -1.4, COL.coneN);
+  cone(18.5, 2.8, COL.coneF);
+  cone(2.9, -1.05, COL.cone);
+  cone(2.9, 1.05, COL.cone);
+
+  // Street lamps: pole, arm, lamp and its glow, from the far end towards the camera.
+  for (let x = 80; x >= 10; x -= 14) {
+    const base = cam.proj([x, 10.6, 0]),
+      top = cam.proj([x, 10.6, 5.6]),
+      head = cam.proj([x, 11.6, 5.5]);
+    if (top[2] < 0.8) continue;
+    line(g, base, top, '#2c3239', Math.max(1, cam.px(0.12, top[2])));
+    line(g, top, head, '#2c3239', Math.max(1, cam.px(0.08, top[2])));
+    const r = cam.px(1.6, head[2]);
+    const glow = g.createRadialGradient(head[0], head[1], 0, head[0], head[1], r);
+    glow.addColorStop(0, 'rgba(255,232,190,0.55)');
+    glow.addColorStop(0.25, 'rgba(255,214,150,0.16)');
+    glow.addColorStop(1, 'rgba(255,214,150,0)');
+    g.fillStyle = glow;
+    g.fillRect(head[0] - r, head[1] - r, 2 * r, 2 * r);
+    disc(g, head, Math.max(1.5, cam.px(0.16, head[2])), '#fff1d6');
+    // The cone of light down to the pavement.
+    const ring = [head];
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      ring.push(cam.proj([x + Math.cos(a) * 2.6, 11.6 + Math.sin(a) * 2.6, 0]));
+    }
+    poly(g, hull(ring), 'rgba(255,226,170,0.025)');
+  }
+}
+
+/** The cached backdrop, painted again only when the canvas or the layout changes. */
+function drawBackdrop(cam, w, h, supW) {
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  const key = [w, h, dpr, supW].join(' ');
+  if (backdrop.key !== key) {
+    const c = backdrop.canvas || document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * dpr));
+    c.height = Math.max(1, Math.round(h * dpr));
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    paintBackdrop(g, cam, w, h);
+    backdrop.canvas = c;
+    backdrop.key = key;
+  }
+  ctx.drawImage(backdrop.canvas, 0, 0, w, h);
+}
+
+/** The pose to draw: the bike as it is, standing up from the foot, or going down onto a foot after a dab. */
+function currentPose() {
+  const pose = { phi: S.phi, d: S.d, u: S.u, w: S.w, yaw: S.yaw, X: S.X, Y: S.Y, foot: footK, dab: 0, side: 0 };
+  if (fall) {
+    pose.phi = fall.phi;
+    pose.dab = fall.k;
+    pose.side = fall.side;
+    pose.foot = 0;
+  }
+  return pose;
+}
+
+/** The CoG, the point straight below it, the band of support and the point the tyres push from. */
+function drawCogMarker(cam, pose) {
+  const g = ctx;
+  const c = prep(cfg.p);
+  // Across the bike line in the frame of the bike, then put where the bike stands.
+  const Gb = roll([BIKE.b, (BIKE.mr * pose.u) / c.M, c.h], pose.phi);
+  const Gw = place(Gb, pose);
+  const at = (x, y) => place([x, y, 0], pose);
+  const bx = BIKE.b;
+  const off = Gb[1] - S.mid;
+  const half = S.half;
+  const col = Math.abs(off) <= half ? COL.ok : Math.abs(off) <= 2 * half ? COL.warn : '#ef5350';
+  const band = projPoly(cam, [
+    at(bx - 0.16, S.mid - half),
+    at(bx + 0.16, S.mid - half),
+    at(bx + 0.16, S.mid + half),
+    at(bx - 0.16, S.mid + half),
+  ]);
+  if (band) poly(g, band, alpha(COL.ok, 0.45), alpha(COL.ok, 0.9), 1);
+  const yP = fall ? Gb[1] : S.yP;
+  const p0 = cam.proj(at(bx - 0.2, yP)),
+    p1 = cam.proj(at(bx + 0.2, yP));
+  line(g, p0, p1, alpha(COL.chalk, 0.9), Math.max(1.2, cam.px(0.012, p0[2])));
+  const top = cam.proj(Gw),
+    foot = cam.proj(at(bx, Gb[1]));
+  g.setLineDash([4, 4]);
+  line(g, top, foot, alpha(col, 0.85), 1.5);
+  g.setLineDash([]);
+  ring(g, top, cam.px(0.05, top[2]), col, 2);
+  disc(g, top, cam.px(0.018, top[2]), col);
+  disc(g, foot, Math.max(3, cam.px(0.028, foot[2])), col);
+}
+
+function drawScene() {
+  const { w, h } = fit(cv, ctx);
+  const { narrow, supW, cam } = sceneLayout(w, h);
+  drawBackdrop(cam, w, h, supW);
+  const pose = currentPose();
+  drawShadow(cam, pose, w, h);
+  drawBike3d(ctx, cam, pose);
+  if (cfg.sup) {
+    drawCogMarker(cam, pose);
+    drawSupport(w - supW - 10, 10, supW, Math.min(h - 20, Math.max(200, h * 0.74)), narrow);
+  }
+  drawHud(w, h, supW, narrow);
+}
+
+/**
+ * The shadow of the bike and rider on the asphalt, in one layer, so that overlaps stay even. The
+ * layer has fewer pixels than the screen: stretched over it, its edges come out soft, with no blur
+ * filter, which is slow and which some browsers ignore.
+ */
+function drawShadow(cam, pose, w, h) {
+  const W0 = Math.max(1, Math.round(w * SHADOW_RES)),
+    H0 = Math.max(1, Math.round(h * SHADOW_RES));
+  if (shadowLayer.width !== W0 || shadowLayer.height !== H0) {
+    shadowLayer.width = W0;
+    shadowLayer.height = H0;
+  }
+  const g = shadowLayer.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W0, H0);
+  const kx = W0 / w,
+    ky = H0 / h;
+  g.setTransform(kx, 0, 0, ky, 0, 0);
+  // Only the part of the layer with the shadow on it is laid over the picture; the margin covers
+  // the width of the thickest lines.
+  const [l, t, r, b] = shadowShapes(g, cam, pose);
+  const x0 = Math.max(0, Math.floor(l - 24)),
+    y0 = Math.max(0, Math.floor(t - 24));
+  const x1 = Math.min(w, Math.ceil(r + 24)),
+    y1 = Math.min(h, Math.ceil(b + 24));
+  if (x1 <= x0 || y1 <= y0) return;
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  ctx.drawImage(shadowLayer, x0 * kx, y0 * ky, (x1 - x0) * kx, (y1 - y0) * ky, x0, y0, x1 - x0, y1 - y0);
+  ctx.restore();
+}
+
+/** The contact patches from above and the band of support under the CoG. */
+function drawSupport(x, y, w, h, narrow) {
+  const g = ctx;
+  const c = prep(cfg.p);
+  panel(x, y, w, h);
+  const u = clamp(w / 220, 0.6, 1.1);
+  g.fillStyle = COL.muted;
+  g.font = `500 ${10 * u}px ${FONT_MONO}`;
+  g.textAlign = 'left';
+  g.fillText(i18n`PODPARCIE Z GÓRY`, x + 9 * u, y + 16 * u);
+
+  // Top view: lengthwise to scale, sideways four times larger, so that centimetres show.
+  const gaugeH = 58 * u;
+  const top = y + 26 * u,
+    bot = y + h - gaugeH - 10 * u;
+  const sx = (bot - top) / (BIKE.L + 0.42);
+  const LAT = 4;
+  const ox = x + w / 2,
+    oy = bot - 0.2 * sx;
+  const at = (bx, by) => [ox + by * sx * LAT, oy - bx * sx];
+  const half = S.half;
+  const mid = S.mid;
+  // A contact patch magnified LAT times about its centre, so its true shape and angle show.
+  const patch = (bx, by, wd, ln, ang) => {
+    const [px, py] = at(bx, by);
+    const ca = Math.cos(ang),
+      sa = Math.sin(ang);
+    const k = sx * LAT;
+    return [
+      [-ln / 2, -wd / 2],
+      [ln / 2, -wd / 2],
+      [ln / 2, wd / 2],
+      [-ln / 2, wd / 2],
+    ].map(([a, b]) => [px + (a * sa + b * ca) * k, py - (a * ca - b * sa) * k]);
+  };
+  const ang = groundSteer(S.d);
+  const rearP = patch(0, 0, c.wr, c.lr, 0);
+  const frontP = patch(BIKE.L, frontShift(S.d), c.wf, c.lf, ang);
+  poly(g, hull([...rearP, ...frontP]), alpha(COL.ok, 0.13), alpha(COL.ok, 0.45), 1);
+  // Bike line, wheels and handlebar at their true angles.
+  const dirLine = (p0, a, l0, l1, col, lw) => {
+    const dx = Math.sin(a) * sx,
+      dy = -Math.cos(a) * sx;
+    line(g, [p0[0] + dx * l0, p0[1] + dy * l0], [p0[0] + dx * l1, p0[1] + dy * l1], col, lw);
+  };
+  line(g, at(-0.3, 0), at(BIKE.L, 0), alpha(COL.chalk, 0.22), 1);
+  dirLine(at(0, 0), 0, -0.3, 0.3, alpha(COL.chalk, 0.45), 3 * u);
+  dirLine(at(BIKE.L, frontShift(S.d)), ang, -0.3, 0.3, alpha(COL.chalk, 0.45), 3 * u);
+  dirLine(at(1.0, 0), ang + Math.PI / 2, -0.39, 0.39, alpha(COL.spd, 0.9), 2.5 * u);
+  poly(g, rearP, '#c9cdd1');
+  poly(g, frontP, '#c9cdd1');
+  // The foot on the asphalt while the bike rests on it.
+  if (footK > 0.5 && !fall) {
+    const fp = at(0.5, -FOOT_ARM / LAT);
+    g.fillStyle = alpha(COL.warn, 0.85);
+    g.font = `600 ${9 * u}px ${FONT_MONO}`;
+    g.textAlign = 'center';
+    disc(g, fp, 4 * u, alpha(COL.warn, 0.85));
+    g.fillText(i18n`stopa`, fp[0], fp[1] - 7 * u);
+  }
+  // CoG and the point the tyres push from, at the CoG's station along the bike.
+  const off = S.yG - mid;
+  const state = Math.abs(off) <= half ? COL.ok : Math.abs(off) <= 2 * half ? COL.warn : '#ef5350';
+  line(g, at(BIKE.b, mid - half), at(BIKE.b, mid + half), alpha(COL.ok, 0.8), 2 * u);
+  const yPt = at(BIKE.b, S.yP);
+  line(g, [yPt[0], yPt[1] - 6 * u], [yPt[0], yPt[1] + 6 * u], COL.chalk, 1.5 * u);
+  if (cfg.trend && phase === 'ride') {
+    const tp = at(BIKE.b, S.yG + S.yGv * 0.25);
+    ring(g, tp, 5 * u, alpha(COL.chalk, 0.8), 1.5);
+  }
+  disc(g, at(BIKE.b, S.yG), 5.5 * u, state);
+  g.fillStyle = COL.dim;
+  g.font = `500 ${9 * u}px ${FONT_MONO}`;
+  g.textAlign = 'right';
+  g.fillText(i18n`w bok ×${LAT}`, x + w - 8 * u, y + 16 * u);
+
+  // Gauge: the band under the CoG, centimetres to scale.
+  const gy = y + h - gaugeH;
+  const gx0 = x + 12 * u,
+    gx1 = x + w - 12 * u;
+  const SPAN = 0.12;
+  const gxOf = (m) => (gx0 + gx1) / 2 + (clamp(m, -SPAN, SPAN) / SPAN) * ((gx1 - gx0) / 2);
+  g.fillStyle = COL.muted;
+  g.font = `500 ${9.5 * u}px ${FONT_MONO}`;
+  g.textAlign = 'left';
+  g.fillText(i18n`POD ŚRODKIEM CIĘŻKOŚCI`, gx0, gy + 4 * u);
+  const by = gy + 22 * u;
+  g.fillStyle = COL.rule;
+  g.fillRect(gx0, by - 4 * u, gx1 - gx0, 8 * u);
+  g.fillStyle = alpha(COL.ok, 0.65);
+  g.fillRect(gxOf(mid - half), by - 4 * u, gxOf(mid + half) - gxOf(mid - half), 8 * u);
+  g.fillStyle = COL.dim;
+  for (let cm = -10; cm <= 10; cm += 5) g.fillRect(gxOf(cm / 100) - 0.5, by + 5 * u, 1, cm % 10 ? 3 * u : 5 * u);
+  line(g, [gxOf(S.yP), by - 8 * u], [gxOf(S.yP), by + 8 * u], COL.chalk, 1.5 * u);
+  disc(g, [gxOf(S.yG), by], 6 * u, state);
+  g.fillStyle = COL.muted;
+  g.textAlign = 'center';
+  g.fillText(i18n`pas ±${fmt(half * 100, 1)} cm · CoG ${fmt(off * 100, 1)} cm`, (gx0 + gx1) / 2, by + 22 * u);
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Heads-up display over the scene: time or the load on the foot, lean gauge with the CoG, the hips
+// and the handlebar.
+
+function panel(x, y, w, h) {
+  ctx.fillStyle = alpha(COL.asphalt, 0.74);
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, 6);
+  else ctx.rect(x, y, w, h);
+  ctx.fill();
+}
+
+/** Kilograms without a minus sign in front of a zero. */
+const kg = (n) => fmt(Math.abs(n) < 0.5 ? 0 : n, 0);
+
+function drawHud(w, h, supW, narrow) {
+  const u = clamp(w / 900, 0.72, 1.2);
+  const mono = (s, wgt = 500) => `${wgt} ${s * u}px ${FONT_MONO}`;
+  const disp = (s) => `700 ${s * u}px ${FONT_DISPLAY}`;
+
+  // Time, or while the foot is down, the load on it.
+  panel(10, 10, 186 * u, 96 * u);
+  ctx.textAlign = 'left';
+  ctx.font = mono(10.5);
+  if (phase === 'setup') {
+    const load = S.footLoad / G;
+    const near = Math.abs(load) < 2 ? COL.ok : Math.abs(load) < 6 ? COL.warn : COL.chalk;
+    ctx.fillStyle = COL.warn;
+    ctx.fillText(i18n`STOPA NA ZIEMI`, 20 * u, 27 * u);
+    ctx.fillStyle = near;
+    ctx.font = disp(32);
+    ctx.fillText(kg(load) + ' kg', 20 * u, 59 * u);
+    ctx.font = mono(11.5);
+    ctx.fillStyle = COL.muted;
+    ctx.fillText(load < -0.5 ? i18n`motocykl ciągnie w prawo` : i18n`nacisk na lewą stopę`, 20 * u, 78 * u);
+    ctx.fillStyle = COL.chalk;
+    ctx.fillText(COARSE.matches ? i18n`przycisk „Wstań”` : i18n`Spacja: wstań na podnóżki`, 20 * u, 95 * u);
+  } else {
+    const riding = phase === 'ride';
+    ctx.fillStyle = riding ? COL.ok : COL.muted;
+    ctx.fillText(riding ? i18n`NA PODNÓŻKACH` : i18n`TRACKSTAND`, 20 * u, 27 * u);
+    ctx.fillStyle = phase === 'ready' ? COL.dim : COL.chalk;
+    ctx.font = disp(32);
+    ctx.fillText(fmt(S.t) + ' s', 20 * u, 59 * u);
+    ctx.font = mono(11.5);
+    ctx.fillStyle = COL.muted;
+    const rec = best[bestKey()];
+    ctx.fillText(rec ? i18n`rekord ${fmt(rec)} s` : i18n`bez rekordu`, 20 * u, 78 * u);
+    ctx.fillText(`${bar(cfg.p)} · ${i18n`tempo ${pct(cfg.tempo)}`}`, 20 * u, 95 * u);
+  }
+
+  // Lean gauge: the needle is the bike, the dot on the arc the CoG over the support. The needle
+  // starts away from the middle, so that the angle written there stays readable.
+  const R = (narrow ? 46 : 62) * u;
+  const pad = 12 * u;
+  const room = w - supW - 20;
+  const gx = narrow ? 10 : Math.max(206 * u, room / 2 - R - pad);
+  const gyTop = narrow ? 114 * u : 10;
+  panel(gx, gyTop, 2 * R + 2 * pad, R + 2 * pad + 22 * u);
+  const cx = gx + pad + R,
+    cy = gyTop + pad + R;
+  const SPAN = 30 * RAD;
+  const ang = (a) => -Math.PI / 2 + (clamp(a, -SPAN, SPAN) / SPAN) * (Math.PI / 2.4);
+  const arc = (a0, a1, col, lw) => {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, ang(a0), ang(a1));
+    ctx.stroke();
+  };
+  ctx.lineCap = 'butt';
+  arc(-SPAN, SPAN, COL.rule, 8 * u);
+  arc(-DAB_DEG * RAD * 0.5, DAB_DEG * RAD * 0.5, alpha(COL.ok, 0.5), 8 * u);
+  arc(DAB_DEG * RAD, SPAN, 'rgba(239,83,80,0.8)', 8 * u);
+  arc(-SPAN, -DAB_DEG * RAD, 'rgba(239,83,80,0.8)', 8 * u);
+  ctx.strokeStyle = COL.dim;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let d = -30; d <= 30; d += 10) {
+    const a = ang(d * RAD);
+    ctx.moveTo(cx + Math.cos(a) * (R - 7 * u), cy + Math.sin(a) * (R - 7 * u));
+    ctx.lineTo(cx + Math.cos(a) * (R - 12 * u), cy + Math.sin(a) * (R - 12 * u));
+  }
+  ctx.stroke();
+  const pose = currentPose();
+  const an = ang(pose.phi);
+  ctx.strokeStyle = COL.chalk;
+  ctx.lineWidth = 3 * u;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx + Math.cos(an) * R * 0.55, cy + Math.sin(an) * R * 0.55);
+  ctx.lineTo(cx + Math.cos(an) * (R + 4 * u), cy + Math.sin(an) * (R + 4 * u));
+  ctx.stroke();
+  const cogCol =
+    Math.abs(S.cogLean) < DAB_DEG * RAD * 0.5 ? COL.ok : Math.abs(S.cogLean) < DAB_DEG * RAD ? COL.warn : '#ef5350';
+  const ac = ang(S.cogLean);
+  disc(ctx, [cx + Math.cos(ac) * R, cy + Math.sin(ac) * R], 6 * u, cogCol);
+  ctx.textAlign = 'center';
+  ctx.font = disp(18);
+  ctx.fillStyle = COL.chalk;
+  const side = Math.abs(pose.phi) < 0.05 * RAD ? '' : pose.phi < 0 ? i18n`L` : i18n`P`;
+  ctx.fillText(`${fmt(deg(Math.abs(pose.phi)), 1)}° ${side}`.trim(), cx, cy + 4 * u);
+  ctx.font = mono(10, 600);
+  ctx.fillStyle = cogCol;
+  ctx.fillText(i18n`CoG ${fmt(deg(Math.abs(S.cogLean)), 1)}°`, cx, cy + 18 * u);
+
+  // The hips, the handlebar and how far the bike rolled: a marker in the middle is straight, or where it started.
+  const bw = 84 * u,
+    lab = 78 * u,
+    val = 52 * u,
+    rowH = 17 * u;
+  const pw = lab + bw + val + 18 * u,
+    ph = rowH * 3 + 12 * u;
+  // With the pads over the picture the bottom is theirs, so the bars go under the time.
+  const overPads = LANDPADS.matches && padsEl.classList.contains('on');
+  const lx = 10;
+  const py = overPads ? 18 + 96 * u : h - ph - 10;
+  panel(lx, py, pw, ph);
+  const midBar = (i, v, col, text, value) => {
+    const y = py + 8 * u + i * rowH;
+    ctx.fillStyle = COL.muted;
+    ctx.font = mono(10);
+    ctx.textAlign = 'left';
+    ctx.fillText(text, lx + 10 * u, y + 9 * u);
+    const x0 = lx + lab + 10 * u;
+    ctx.fillStyle = COL.rule;
+    ctx.fillRect(x0, y + 2 * u, bw, 8 * u);
+    ctx.fillStyle = COL.dim;
+    ctx.fillRect(x0 + bw / 2 - 1, y, 2, 12 * u);
+    ctx.fillStyle = col;
+    ctx.fillRect(x0 + bw / 2 + (clamp(v, -1, 1) * bw) / 2 - 4 * u, y - 1 * u, 8 * u, 14 * u);
+    ctx.fillStyle = COL.chalk;
+    ctx.textAlign = 'right';
+    ctx.fillText(value, lx + pw - 8 * u, y + 9 * u);
+  };
+  const lr = (v, eps) => (Math.abs(v) < eps ? '' : v < 0 ? ' ' + i18n`L` : ' ' + i18n`P`);
+  midBar(0, S.u / BIKE.du, COL.spd, i18n`BIODRA`, `${Math.round(Math.abs(S.u) * 100)} cm${lr(S.u, 0.005)}`);
+  midBar(
+    1,
+    S.d / (BIKE.lock * RAD),
+    COL.cone,
+    i18n`KIEROWNICA`,
+    `${Math.round(deg(Math.abs(S.d)))}°${lr(S.d, 0.5 * RAD)}`,
+  );
+  const fb = Math.abs(S.x) < 0.005 ? '' : S.x > 0 ? ' ↑' : ' ↓';
+  midBar(2, S.x / ROLL_SCALE, COL.ok, i18n`TOCZENIE`, `${Math.round(Math.abs(S.x) * 100)} cm${fb}`);
+
+  if (paused && (phase === 'ride' || phase === 'setup')) {
+    ctx.fillStyle = 'rgba(12,14,16,0.6)';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = COL.chalk;
+    ctx.textAlign = 'center';
+    ctx.font = disp(30);
+    ctx.fillText(i18n`Pauza`, w / 2, h / 2);
+    ctx.font = mono(13);
+    ctx.fillText(COARSE.matches ? i18n`dotknij przycisku, aby grać dalej` : i18n`P: dalej`, w / 2, h / 2 + 26 * u);
+  }
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The last 12 seconds: lean of the bike and of the CoG, the handlebar, the hips and the rolling.
+
+const teleCanvas = $('tele');
+const tctx = teleCanvas.getContext('2d');
+const TELE_SPAN = 12;
+const TELE_DEG = 15;
+
+function recordTrace() {
+  trace.push({
+    t: S.t,
+    phi: deg(S.phi),
+    cog: deg(S.cogLean),
+    d: S.d / (BIKE.lock * RAD),
+    body: S.u / BIKE.du,
+    roll: S.x / ROLL_SCALE,
+  });
+  while (trace.length && trace[0].t < S.t - TELE_SPAN - 0.5) trace.shift();
+  teleDirty = true;
+}
+
+function drawTele() {
+  const { w, h } = fit(teleCanvas, tctx);
+  tctx.clearRect(0, 0, w, h);
+  const tEnd = Math.max(TELE_SPAN, S.t);
+  const tx = (t) => ((t - (tEnd - TELE_SPAN)) / TELE_SPAN) * w;
+  const top = 8,
+    bot = h - 6;
+  const mid = (top + bot) / 2;
+  const ty = (d) => mid - (clamp(d, -TELE_DEG, TELE_DEG) / TELE_DEG) * ((bot - top) / 2);
+  tctx.lineWidth = 1;
+  tctx.font = `10px ${FONT_MONO}`;
+  tctx.textAlign = 'left';
+  tctx.strokeStyle = alpha(COL.rule, 0.7);
+  tctx.fillStyle = COL.dim;
+  tctx.beginPath();
+  for (let d = -10; d <= 10; d += 5) {
+    tctx.moveTo(0, ty(d));
+    tctx.lineTo(w, ty(d));
+    if (d) tctx.fillText((d > 0 ? i18n`P ` : i18n`L `) + Math.abs(d) + '°', 3, ty(d) - 3);
+  }
+  tctx.stroke();
+  tctx.fillStyle = 'rgba(239,83,80,0.08)';
+  tctx.fillRect(0, top, w, ty(DAB_DEG) - top);
+  tctx.fillRect(0, ty(-DAB_DEG), w, bot - ty(-DAB_DEG));
+  if (trace.length < 2) return;
+  const plot = (f, col, lw, dash) => {
+    tctx.strokeStyle = col;
+    tctx.lineWidth = lw;
+    tctx.setLineDash(dash || []);
+    tctx.beginPath();
+    trace.forEach((p, i) => (i ? tctx.lineTo(tx(p.t), f(p)) : tctx.moveTo(tx(p.t), f(p))));
+    tctx.stroke();
+    tctx.setLineDash([]);
+  };
+  plot((p) => mid - p.body * (bot - top) * 0.22, alpha(COL.spd, 0.85), 1.2);
+  plot((p) => mid - clamp(p.roll, -1.5, 1.5) * (bot - top) * 0.3, alpha(COL.warn, 0.9), 1.2, [2, 3]);
+  plot((p) => mid - p.d * (bot - top) * 0.4, alpha(COL.cone, 0.9), 1.4, [5, 3]);
+  plot((p) => ty(p.cog), COL.ok, 1.6);
+  plot((p) => ty(p.phi), COL.chalk, 2);
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The support diagram under the game: contact patches from above for a chosen steering angle.
+
+const demoCanvas = $('sup');
+const demoCtx = demoCanvas.getContext('2d');
+
+function drawSupportDemo() {
+  const g = demoCtx;
+  const { w, h } = fit(demoCanvas, g);
+  g.clearRect(0, 0, w, h);
+  const c = prep(cfg.p);
+  const d = Number($('supr').value) * RAD;
+  const sup = support(c, d);
+  const side = sup.mid < -0.001 ? i18n`w lewo` : sup.mid > 0.001 ? i18n`w prawo` : '';
+  $('supv').textContent =
+    i18n`pas ±${fmt(sup.half * 100, 1)} cm` +
+    (side ? ' · ' + i18n`środek ${fmt(Math.abs(sup.mid) * 100, 1)} cm ${side}` : '');
+  // Lengthwise the bike is drawn across the canvas; sideways five times larger.
+  const LAT = 5;
+  const sx = (w - 70) / (BIKE.L + 0.5);
+  const ox = 26,
+    oy = h / 2;
+  const at = (bx, by) => [ox + (bx + 0.25) * sx, oy + by * sx * LAT];
+  // Patches magnified LAT times about their centres, so their true shape and angle show.
+  const patch = (x0, y0, wd, ln, a) => {
+    const [px, py] = at(x0, y0);
+    const k = sx * LAT;
+    return [
+      [-ln / 2, -wd / 2],
+      [ln / 2, -wd / 2],
+      [ln / 2, wd / 2],
+      [-ln / 2, wd / 2],
+    ].map(([p, q]) => [px + (p * Math.cos(a) - q * Math.sin(a)) * k, py + (p * Math.sin(a) + q * Math.cos(a)) * k]);
+  };
+  const rp = patch(0, 0, c.wr, c.lr, 0);
+  const fp = patch(BIKE.L, frontShift(d), c.wf, c.lf, groundSteer(d));
+  poly(g, hull([...rp, ...fp]), alpha(COL.ok, 0.14), alpha(COL.ok, 0.5), 1);
+  line(g, at(-0.1, 0), at(BIKE.L + 0.1, 0), alpha(COL.chalk, 0.3), 1);
+  poly(g, rp, '#c9cdd1');
+  poly(g, fp, '#c9cdd1');
+  line(g, at(BIKE.b, sup.mid - sup.half), at(BIKE.b, sup.mid + sup.half), COL.ok, 3);
+  disc(g, at(BIKE.b, 0), 5, COL.chalk);
+  g.font = `500 11px ${FONT_MONO}`;
+  g.fillStyle = COL.muted;
+  g.textAlign = 'left';
+  g.fillText(i18n`tył`, 4, oy + 4);
+  g.textAlign = 'right';
+  g.fillText(i18n`przód`, w - 2, oy + 4);
+  g.textAlign = 'center';
+  g.fillText(i18n`środek ciężkości`, at(BIKE.b, 0)[0], 14);
+  g.fillText(i18n`w bok ×${LAT}`, at(BIKE.b, 0)[0], h - 4);
+  g.textAlign = 'right';
+  g.fillStyle = COL.dim;
+  g.fillText(i18n`lewa strona`, w - 2, 14);
+  g.fillText(i18n`prawa strona`, w - 2, h - 4);
+}
+$('supr').addEventListener('input', drawSupportDemo);
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The run loop and start-up. Physics advances in fixed steps of DT, scaled by the tempo; the scene
+// is drawn only while something moves or after invalidate().
+
+const FALL_DEG = 16; // after a dab the bike settles on the foot at this lean [°]
+let last = performance.now();
+let acc = 0;
+
+function settle(dt) {
+  const target = fall.side * FALL_DEG * RAD;
+  fall.phi += clamp(target - fall.phi, -1.2 * dt, 1.2 * dt);
+  fall.k = Math.min(1, fall.k + dt / 0.35);
+  return fall.k < 1 || fall.phi !== target;
+}
+
+const live = () => phase === 'setup' || phase === 'ride';
+
+function frame(now) {
+  const dtReal = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  const dtGame = dtReal * cfg.tempo;
+  const running = live() && !paused;
+  let moving = running;
+  if (running) {
+    acc += dtGame;
+    const inp = controls();
+    while (acc >= DT && live()) {
+      acc -= DT;
+      step(S, cfg.p, inp);
+      if (phase !== 'ride') continue;
+      traceT += DT;
+      if (traceT >= 1 / 30) {
+        traceT = 0;
+        recordTrace();
+      }
+      if (S.done) finish();
+    }
+    // The foot comes up onto the peg after standing up.
+    if (phase === 'ride' && footK > 0) footK = Math.max(0, footK - dtGame / 0.3);
+    // With the foot down the picture changes only while a key is held or the bars and hips settle.
+    if (phase === 'setup') moving = Object.values(inp).some(Boolean) || Math.abs(S.dd) > 1e-4 || Math.abs(S.ud) > 1e-4;
+  } else {
+    acc = 0;
+    if (fall) moving = settle(dtGame) || moving;
+  }
+  if (moving || sceneDirty) {
+    sceneDirty = false;
+    drawScene();
+  }
+  if (teleDirty) {
+    teleDirty = false;
+    drawTele();
+  }
+  requestAnimationFrame(frame);
+}
+
+if (document.fonts) {
+  const redraw = () => {
+    invalidate();
+    drawSupportDemo();
+  };
+  document.fonts.ready.then(redraw);
+  document.fonts.addEventListener('loadingdone', redraw);
+}
+bikeInfo();
+syncAct();
+showReady();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

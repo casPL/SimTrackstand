@@ -1,0 +1,102 @@
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>SimTrackstand</h1><span class="sub">trening balansu w miejscu</span><a class="sib" data-sibling="simwheelie" href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener" title="SimWheelie: trening balance pointu na tylnym kole">SimWheelie →</a><a class="sib" data-sibling="simgp8" href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: symulator przejazdu GP8 w motogymkhanie">SimGP8 →</a><a class="sib" data-lang href="simtrackstand-en.html" hreflang="en" title="English">EN</a></div>
+    <div class="hset">
+      <div class="hg"><span class="k">Ciśnienie w oponach [bar]</span><div class="seg" id="press" role="group" aria-label="Ciśnienie w oponach"></div></div>
+      <div class="hg"><span class="k">Tempo</span><div class="seg" id="tempo" role="group" aria-label="Tempo"><button data-v="1">100%</button><button data-v="0.75">75%</button><button data-v="0.5">50%</button><button data-v="0.35">35%</button></div></div>
+      <div class="hg"><span class="k">Podgląd</span><div class="seg" id="view" role="group" aria-label="Podgląd"><button data-v="sup">Podparcie</button><button data-v="trend">Trend</button></div></div>
+    </div>
+  </header>
+
+  <div class="play" id="play">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Widok z tyłu i z lewej: motocykl w trackstandzie, wskaźnik przechyłu i podparcia opon"></canvas>
+      <div class="overlay" id="overlay"></div>
+    </div>
+    <div class="pads" id="pads">
+      <div class="grp body"><button class="pad" data-k="bl">◀ Biodra</button><button class="pad" data-k="br">Biodra ▶</button></div>
+      <div class="grp mid"><button class="pad fb" data-k="fw">▲ Przód</button><button class="pad act" data-k="act" id="actPad">Start</button><button class="pad fb" data-k="bw">▼ Tył</button></div>
+      <div class="grp"><button class="pad" data-k="left">◀ Kier.</button><button class="pad" data-k="right">Kier. ▶</button></div>
+    </div>
+  </div>
+
+  <section class="tele" aria-label="Telemetria">
+    <div class="head">
+      <h3>Telemetria</h3>
+      <span class="lg"><i style="background:var(--chalk)"></i>przechył motocykla</span>
+      <span class="lg"><i style="background:var(--ok)"></i>środek ciężkości nad podparciem</span>
+      <span class="lg"><i style="background:var(--cone)"></i>kierownica</span>
+      <span class="lg"><i style="background:var(--spd)"></i>biodra</span>
+      <span class="lg"><i style="background:var(--warn)"></i>toczenie</span>
+    </div>
+    <div class="telebox"><canvas id="tele" aria-label="Wykres przechyłu, środka ciężkości, kierownicy, bioder i toczenia z ostatnich 12 sekund"></canvas></div>
+  </section>
+
+  <div class="info">
+    <section>
+      <h3>Sterowanie</h3>
+      <ul>
+        <li><kbd>A</kbd> <kbd>D</kbd>: biodra w lewo i w prawo nad podnóżkami. Ze stopą na ziemi przesuwają się, póki trzymasz klawisz, i zostają. Na podnóżkach klawisz przesuwa je do końca w swoją stronę, a po puszczeniu wracają do ustawienia sprzed wstania.</li>
+        <li><kbd>←</kbd> <kbd>→</kbd>: kierownica. Skręca, póki trzymasz klawisz, i zostaje tam, gdzie ją puścisz.</li>
+        <li><kbd>W</kbd> <kbd>S</kbd> lub <kbd>↑</kbd> <kbd>↓</kbd>: motocykl do przodu i do tyłu. Ciało idzie nad podnóżkami w drugą stronę i przetacza motocykl o kilka centymetrów. Po puszczeniu klawisza ciało wraca na środek, a motocykl toczy się z powrotem. Działa tylko na podnóżkach.</li>
+        <li><kbd>Spacja</kbd>: start, potem wstanie na podnóżki. <kbd>P</kbd>: pauza.</li>
+        <li>Kropka na wskaźniku przechyłu, na asfalcie pod motocyklem i w panelu podparcia to <b>środek ciężkości</b>: zielona nad pasem podparcia, żółta tuż obok, czerwona daleko poza nim. Kółko w panelu pokazuje, gdzie będzie za ćwierć sekundy.</li>
+        <li>Na telefonie przyciski są pod obrazem, a w poziomie na obrazie. Środkowy to start, wstanie i pauza, nad nim i pod nim są przód i tył.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Na czym stoi motocykl</h3>
+      <p>Stojący motocykl podpierają tylko dwa ślady opon na asfalcie. Między nimi jest wąski <b>pas podparcia</b>, szeroki na kilka centymetrów. Dopóki środek ciężkości motocykla z kierowcą jest nad tym pasem, opony go utrzymają. Gdy z niego wyjdzie, motocykl przewraca się jak odwrócone wahadło.</p>
+      <p>Opony nie są sztywne: przy przechyle nacisk przesuwa się w poprzek śladu, aż dojdzie do jego krawędzi. Dalej motocykl podpiera już tylko zaokrąglony bok opony.</p>
+    </section>
+    <section>
+      <h3>Start ze stopą na ziemi</h3>
+      <p>Na początku motocykl opiera się na <b>lewej stopie</b> i lekko przechyla w lewo. Liczba w lewym górnym rogu to nacisk na stopę. Biodra w prawo go zmniejszają. Kierownica skręcona w lewo, w stronę stopy, go zwiększa, a w prawo zmniejsza.</p>
+      <p>Wstań, gdy nacisk jest bliski zera. Motocykl jest wtedy w równowadze i nie poleci od razu w żadną stronę.</p>
+    </section>
+    <section>
+      <h3>Balans na podnóżkach</h3>
+      <p>Przesunięcie bioder działa od razu, bo motocykl obraca się w przeciwną stronę. Gdy motocykl kładzie się w prawo, <b>dociśnij lewy podnóżek</b> i przesuń biodra w lewo. Motocykl pochyli się mocniej pod tobą, a nacisk na oponach przesunie się w prawo, pod środek ciężkości.</p>
+      <p>Biodra w stronę przechyłu prostują motocykl tylko na chwilę. Opona zjeżdża wtedy spod środka ciężkości i motocykl leci dalej.</p>
+    </section>
+    <section>
+      <h3>Kierownica i toczenie</h3>
+      <p>Przednia opona nie może się ślizgać w bok. Gdy skręcasz kierownicę, rama obraca się wokół tylnej opony, a środek ciężkości przesuwa się o 2–3 cm w stronę skrętu. Sam <b>ruch</b> kierownicy w stronę przechyłu od razu prostuje motocykl, tak jak szarpnięcie bioder.</p>
+      <p>Dopóki koła stoją, kierownica skręcona w stronę przechyłu trzyma środek ciężkości po tej stronie. Wystarczy jednak, że motocykl <b>przetoczy się o kilka centymetrów do przodu</b>: koła jadą łukiem w stronę skrętu i wjeżdżają pod środek ciężkości. Do tyłu ten sam łuk prowadzi koła w drugą stronę.</p>
+      <p>Stąd klasyczna pozycja: kierownica skręcona do oporu, biodra na wyższym podnóżku i małe ruchy ciała przód–tył. Gdy motocykl kładzie się w stronę skrętu, przetocz go do przodu. Gdy kładzie się w drugą stronę, do tyłu.</p>
+      <p>Sprawdź na postoju: oparty na lewej nodze motocykl z kierownicą skręconą w lewo do oporu mocniej siada na nodze niż z kierownicą w prawo. Tak samo stoi pewniej na stopce bocznej z kierownicą w lewo.</p>
+    </section>
+    <section>
+      <h3>Toczenie bez gazu i hamulca</h3>
+      <p>Koła toczą się swobodnie, a ciało i motocykl odpychają się od siebie przez podnóżki i kierownicę. Gdy ciało idzie 20 cm do tyłu, motocykl przetacza się około 6 cm do przodu, a wspólny środek ciężkości prawie stoi. Opory toczenia wytracają ruch, więc motocykl sam się zatrzymuje.</p>
+      <p>Pasek <b>toczenie</b> pokazuje, jak daleko motocykl odjechał od miejsca startu. Przy skręconej kierownicy koła jadą po łuku, więc motocykl przy okazji lekko się obraca. Próba kończy się, gdy opona dotknie linii kwadratu, czyli po około 60 cm.</p>
+    </section>
+    <section class="sup-demo">
+      <h3>Pas podparcia</h3>
+      <canvas id="sup" aria-label="Schemat z góry: ślady opon i pas podparcia pod środkiem ciężkości"></canvas>
+      <input type="range" id="supr" min="-38" max="38" step="1" value="30" aria-label="Skręt kierownicy">
+      <div class="row"><span>kierownica w lewo</span><span id="supv"></span><span>w prawo</span></div>
+      <p>Ślady opon przy ciśnieniu wybranym nad grą. Im niższe ciśnienie, tym dłuższy i szerszy ślad, a skręcona przednia opona poszerza pas jeszcze bardziej.</p>
+    </section>
+    <section>
+      <h3>Ciśnienie w oponach</h3>
+      <p>Niższe ciśnienie daje większy ślad: opona rozpłaszcza się bardziej na długość niż na szerokość. Z przodu przy skręconej kierownicy ta długość staje w poprzek, więc pas podparcia rośnie najbardziej. Miękka opona dłużej przetacza nacisk po śladzie, zanim motocykl oprze się na jej zaokrąglonym boku.</p>
+      <p>Na ulicy za niskie ciśnienie szkodzi prowadzeniu i oponie. Tutaj chodzi tylko o balans w miejscu.</p>
+    </section>
+    <section>
+      <h3>Dlaczego to takie trudne</h3>
+      <p>Trackstand to <b>odwrócone wahadło</b>. <span id="dblTxt"></span> Dlatego korekty muszą być małe i wczesne.</p>
+      <p>W prawdziwej jeździe czujesz ruch motocykla ciałem i reagujesz szybciej niż na obraz z ekranu. Tempo 50% i 35% spowalnia czas, a fizyka zostaje ta sama. Rekordy zapisują się osobno dla każdego ciśnienia i tempa.</p>
+    </section>
+    <section>
+      <h3 id="specTitle">Dane motocykla</h3>
+      <table class="spec" id="spec"></table>
+    </section>
+  </div>
+
+  <footer>
+    <p>SimTrackstand © 2026 Maciej Kasprzyk · Instagram <a href="https://www.instagram.com/cas8pl/" target="_blank" rel="noopener">@cas8pl</a></p>
+    <p>Wolne oprogramowanie na licencji <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU GPL</a> w wersji 3 lub nowszej. Bez żadnej gwarancji. Kod źródłowy: <a href="https://github.com/casPL/SimTrackstand" target="_blank" rel="noopener">github.com/casPL/SimTrackstand</a>.</p>
+    <p>Zobacz też <a data-sibling="simwheelie" href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener">SimWheelie</a> i <a data-sibling="simgp8" href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener">SimGP8: symulator przejazdu GP8 w motogymkhanie</a>. Dane motocykla pochodzą właśnie stamtąd.</p>
+  </footer>
+</div>
