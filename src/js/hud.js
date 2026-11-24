@@ -106,13 +106,13 @@ function drawHud(w, h, supW, narrow) {
   ctx.fillStyle = cogCol;
   ctx.fillText(i18n`CoG ${fmt(deg(Math.abs(S.cogLean)), 1)}°`, cx, cy + 18 * u);
 
-  // The hips, the handlebar and how far the bike rolled: a marker in the middle is straight, or where it started.
+  // The hips and the handlebar: a marker in the middle is straight.
   const bw = 84 * u,
     lab = 78 * u,
     val = 52 * u,
     rowH = 17 * u;
   const pw = lab + bw + val + 18 * u,
-    ph = rowH * 3 + 12 * u;
+    ph = rowH * 2 + 12 * u;
   // With the pads over the picture the bottom is theirs, so the bars go under the time.
   const overPads = LANDPADS.matches && padsEl.classList.contains('on');
   const lx = 10;
@@ -144,8 +144,6 @@ function drawHud(w, h, supW, narrow) {
     i18n`KIEROWNICA`,
     `${Math.round(deg(Math.abs(S.d)))}°${lr(S.d, 0.5 * RAD)}`,
   );
-  const fb = Math.abs(S.x) < 0.005 ? '' : S.x > 0 ? ' ↑' : ' ↓';
-  midBar(2, S.x / ROLL_SCALE, COL.ok, i18n`TOCZENIE`, `${Math.round(Math.abs(S.x) * 100)} cm${fb}`);
 
   if (paused && (phase === 'ride' || phase === 'setup')) {
     ctx.fillStyle = 'rgba(12,14,16,0.6)';

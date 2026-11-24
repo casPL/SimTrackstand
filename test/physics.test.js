@@ -9,10 +9,9 @@ const { loadCore } = require('../build.js');
 const { ride, balancedHips } = require('./bot.js');
 
 // prettier-ignore
-const core = loadCore(['BIKE', 'PRESSURES', 'step', 'newState', 'standUp', 'prep', 'support', 'DT', 'RAD', 'G', 'FORE']);
-const { BIKE, PRESSURES, step, newState, standUp, prep, support, RAD, G, FORE } = core;
+const core = loadCore(['BIKE', 'PRESSURES', 'step', 'newState', 'standUp', 'prep', 'support', 'DT', 'RAD', 'G', 'HIP_SWING', 'P0']);
+const { BIKE, PRESSURES, step, newState, standUp, prep, support, RAD, G, P0 } = core;
 const LOCK = BIKE.lock * RAD;
-const ROLL = BIKE.mr / (BIKE.m + BIKE.mr);
 
 /** Steps s at pressure p with the controls given by ctl(s) for up to seconds, or until the run ends. */
 function hold(s, p, ctl, seconds) {
@@ -40,9 +39,8 @@ test('with the foot down nothing moves, and the foot carries what gravity leaves
   for (const p of PRESSURES) {
     const s = setUp(p);
     const phi = s.phi;
-    for (let i = 0; i < 240; i++) step(s, p, { left: 1, br: 1, fw: 1 });
+    for (let i = 0; i < 240; i++) step(s, p, { left: 1, br: 1 });
     assert.equal(s.phi, phi);
-    assert.equal(s.x, 0, 'the body keys do not roll the bike');
     assert.equal(s.t, 0, 'the clock starts only on the pegs');
     assert.ok(setUp(p).footLoad / G > 3, 'resting on the foot, the bike leans on it');
   }
@@ -78,14 +76,33 @@ test('set so that the foot carries nothing, the bike stands up in balance', () =
     }
 });
 
-test('turning the bars into the lean rights the bike at once, but held there with the wheels still it falls sooner', () => {
+test('turning the bars a little further into the lean straightens the bike slightly at once; held there, it falls sooner', () => {
+  for (const p of PRESSURES)
+    for (const d of [0, 20 * RAD]) {
+      const still = hold(balanced(p, d, 0.5 * RAD), p, {}, 1 / 6);
+      const into = hold(balanced(p, d, 0.5 * RAD), p, { right: 1 }, 1 / 6);
+      const gain = still.phi - into.phi;
+      assert.ok(gain > 0.1 * RAD && gain < 1 * RAD, `${p} ${d}: ${(gain / RAD).toFixed(2)}°`);
+      hold(still, p, {}, 10);
+      hold(into, p, {}, 10);
+      assert.ok(into.t < still.t, `${p} ${d}: ${into.t} vs ${still.t}`);
+    }
+});
+
+test('at full lock the bars have nowhere to go, so turning them does nothing', () => {
   for (const p of PRESSURES) {
-    const still = hold(balanced(p, 0, 0.5 * RAD), p, {}, 0.2);
-    const into = hold(balanced(p, 0, 0.5 * RAD), p, { right: 1 }, 0.2);
-    assert.ok(into.phi < still.phi, `${p}: the bars do not right the bike`);
-    hold(still, p, {}, 10);
-    hold(into, p, {}, 10);
-    assert.ok(into.t < still.t, `${p}: ${into.t} vs ${still.t}`);
+    const still = hold(balanced(p, LOCK, 0.5 * RAD), p, {}, 0.3);
+    const into = hold(balanced(p, LOCK, 0.5 * RAD), p, { right: 1 }, 0.3);
+    assert.equal(into.phi, still.phi, String(p));
+  }
+});
+
+test('bars turned away from the lean dip the bike a little further, then bring the CoG back over the tyres', () => {
+  for (const p of PRESSURES) {
+    const still = hold(balanced(p, 0, 0.5 * RAD), p, {}, 0.1);
+    const away = hold(balanced(p, 0, 0.5 * RAD), p, { left: 1 }, 0.1);
+    assert.ok(away.phi > still.phi, `${p}: the bike dips`);
+    assert.ok(away.yG - away.yP < still.yG - still.yP, `${p}: the CoG comes back`);
   }
 });
 
@@ -100,43 +117,26 @@ test('hips to the high side bring the support under the CoG; to the low side the
   }
 });
 
-test('on the pegs the body rolls the bike the other way, about half as far, and back again', () => {
-  for (const p of PRESSURES) {
-    const s = balanced(p, 0);
-    hold(s, p, { fw: 1 }, 1);
-    assert.ok(s.w < -0.9 * FORE, `${p}: the body goes back`);
-    assert.ok(s.x > 0.03 && s.x < ROLL * FORE, `${p}: ${s.x}`);
-    hold(s, p, {}, 1.5);
-    assert.ok(Math.abs(s.x) < 0.01, `${p}: ${s.x}`);
-    assert.equal(s.done, null);
-  }
-});
-
-test('with the bars turned, rolling forward rights a lean towards them and rolling back a lean away', () => {
-  for (const p of PRESSURES) {
-    const lean = (dphi, keys) => hold(balanced(p, LOCK, dphi * RAD), p, keys, 0.4).phi;
-    assert.ok(lean(0.5, { fw: 1 }) < lean(0.5, {}) - 0.5 * RAD, `${p}: forward`);
-    assert.ok(lean(-0.5, { bw: 1 }) > lean(-0.5, {}) + 0.5 * RAD, `${p}: back`);
-    assert.ok(lean(-0.5, { fw: 1 }) < lean(-0.5, {}), `${p}: forward with the lean away`);
-  }
-});
-
-test('a bike that keeps rolling ends the attempt at the chalk line', () => {
-  for (const p of PRESSURES) {
-    const s = balanced(p, 0);
-    s.vG = 0.8;
-    hold(s, p, {}, 5);
-    assert.equal(s.done, 'roll', String(p));
-  }
-});
-
 test('lower pressure and turned bars widen the support band; soft tyres reach their edge later', () => {
   const half = (p, d) => support(prep(p), d).half;
   for (let i = 1; i < PRESSURES.length; i++) {
     assert.ok(half(PRESSURES[i - 1], 0) > half(PRESSURES[i], 0));
     assert.ok(prep(PRESSURES[i - 1]).edge > prep(PRESSURES[i]).edge);
   }
-  for (const p of PRESSURES) assert.ok(half(p, LOCK) > 1.3 * half(p, 0), String(p));
+  for (const p of PRESSURES) assert.ok(half(p, LOCK) > 1.15 * half(p, 0), String(p));
+});
+
+test('the contact patches are ovals the size of a palm: longer than wide, the rear one wider', () => {
+  for (const p of PRESSURES) {
+    const c = prep(p);
+    const load = c.f * c.M * G;
+    const area = (Math.PI / 4) * c.wf * c.lf;
+    assert.ok(Math.abs(area - load / ((p * 100 + P0) * 1000)) < 1e-9, `${p}: area = load / pressure`);
+    assert.ok(c.lf > c.wf && c.lr > c.wr && c.wr > c.wf, String(p));
+    assert.ok(c.wf > 0.04 && c.wr < 0.09 && c.lf < 0.17, String(p));
+  }
+  const hard = prep(2.0);
+  assert.ok(hard.wf * hard.lf * 1e4 > 30 && hard.wf * hard.lf * 1e4 < 60, 'about a credit card at the front');
 });
 
 test('a quick rider on soft tyres holds most of a minute', () => {
@@ -153,16 +153,21 @@ test('with a slower reaction, soft tyres forgive more than hard ones', () => {
       t += ride(core, p, { delay: 0.12, seed, hipErr: (seed % 2 ? 1 : -1) * 0.006 }).t;
     return t / 8;
   };
-  assert.ok(mean(0.8) > 2 * mean(2.0));
+  assert.ok(mean(0.8) > 1.5 * mean(2.0));
 });
 
-test('with the bars at lock, rolling the bike keeps a quick rider up for half a minute; without it, seconds', () => {
-  const mean = (p, use) => {
+test('the hips alone keep a quick rider up for seconds; with the bars too, much longer, and at full lock still longer than with the hips alone', () => {
+  const mean = (p, d0, use) => {
     let t = 0;
     for (let seed = 1; seed <= 4; seed++)
-      t += ride(core, p, { d0: -LOCK, delay: 0.06, seed, hipErr: (seed % 2 ? 1 : -1) * 0.006, use }).t;
+      t += ride(core, p, { d0, delay: 0.06, seed, hipErr: (seed % 2 ? 1 : -1) * 0.006, use }).t;
     return t / 4;
   };
-  for (const p of PRESSURES) assert.ok(mean(p) > 30, `${p}: ${mean(p).toFixed(1)} s`);
-  assert.ok(mean(1.6) > 4 * mean(1.6, ['hips', 'bars']));
+  for (const p of [0.8, 2.0]) {
+    const hips = mean(p, 0, ['hips']);
+    assert.ok(hips < 10, `${p}: ${hips.toFixed(1)} s`);
+    assert.ok(mean(p, 0) > 3 * hips, String(p));
+    const lock = mean(p, -LOCK);
+    assert.ok(lock > 1.5 * hips, `${p}: ${lock.toFixed(1)} s at full lock, ${hips.toFixed(1)} s with the hips alone`);
+  }
 });

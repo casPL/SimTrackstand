@@ -300,7 +300,7 @@ function drawBackdrop(cam, w, h, supW) {
 
 /** The pose to draw: the bike as it is, standing up from the foot, or going down onto a foot after a dab. */
 function currentPose() {
-  const pose = { phi: S.phi, d: S.d, u: S.u, w: S.w, yaw: S.yaw, X: S.X, Y: S.Y, foot: footK, dab: 0, side: 0 };
+  const pose = { phi: S.phi, d: S.d, u: S.u, foot: footK, dab: 0, side: 0 };
   if (fall) {
     pose.phi = fall.phi;
     pose.dab = fall.k;
@@ -316,8 +316,8 @@ function drawCogMarker(cam, pose) {
   const c = prep(cfg.p);
   // Across the bike line in the frame of the bike, then put where the bike stands.
   const Gb = roll([BIKE.b, (BIKE.mr * pose.u) / c.M, c.h], pose.phi);
-  const Gw = place(Gb, pose);
-  const at = (x, y) => place([x, y, 0], pose);
+  const Gw = Gb;
+  const at = (x, y) => [x, y, 0];
   const bx = BIKE.b;
   const off = Gb[1] - S.mid;
   const half = S.half;
@@ -389,7 +389,57 @@ function drawShadow(cam, pose, w, h) {
   ctx.restore();
 }
 
-/** The contact patches from above and the band of support under the CoG. */
+/** Points of an oval w wide and l long in the bike's frame, centred at (x, y) and turned by a [m, rad]. */
+function oval(x, y, w, l, a, n = 32) {
+  const ca = Math.cos(a),
+    sa = Math.sin(a);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const t = (i / n) * Math.PI * 2;
+    const p = (l / 2) * Math.cos(t),
+      q = (w / 2) * Math.sin(t);
+    out.push([x + p * ca - q * sa, y + p * sa + q * ca]);
+  }
+  return out;
+}
+
+/** A tyre w wide seen from above, centred at (x, y) and turned by a: as long as the wheel, with round ends. */
+function tyreTop(x, y, w, a) {
+  const e = w / 2,
+    r = BIKE.rr - e;
+  const ca = Math.cos(a),
+    sa = Math.sin(a);
+  const out = [];
+  for (const end of [1, -1])
+    for (let i = 0; i <= 8; i++) {
+      const t = ((end > 0 ? -1 : 1) * Math.PI) / 2 + (i / 8) * Math.PI;
+      const p = end * r + e * Math.cos(t),
+        q = e * Math.sin(t);
+      out.push([x + p * ca - q * sa, y + p * sa + q * ca]);
+    }
+  return out;
+}
+
+/**
+ * Both tyres and their contact patches from above, to scale, for the bars at d and the tyres of c;
+ * at maps a point of the bike's frame to the canvas. Returns the outlines of the patches.
+ */
+function drawTyresTop(g, at, c, d, lw) {
+  const a = groundSteer(d);
+  // The front patch trails the point where the steering axis meets the ground and swings about it.
+  const fx = BIKE.L + BIKE.trail * (1 - Math.cos(a)),
+    fy = frontShift(d);
+  const map = (pts) => pts.map(([x, y]) => at(x, y));
+  const rear = map(oval(0, 0, c.wr, c.lr, 0)),
+    front = map(oval(fx, fy, c.wf, c.lf, a));
+  poly(g, map(tyreTop(0, 0, BIKE.tr, 0)), '#26292d', alpha(COL.chalk, 0.28), lw);
+  poly(g, map(tyreTop(fx, fy, BIKE.tf, a)), '#26292d', alpha(COL.chalk, 0.28), lw);
+  poly(g, rear, '#c9cdd1');
+  poly(g, front, '#c9cdd1');
+  return { rear, front };
+}
+
+/** The contact patches from above, to scale, and the band of support under the CoG. */
 function drawSupport(x, y, w, h, narrow) {
   const g = ctx;
   const c = prep(cfg.p);
@@ -400,49 +450,33 @@ function drawSupport(x, y, w, h, narrow) {
   g.textAlign = 'left';
   g.fillText(i18n`PODPARCIE Z GÓRY`, x + 9 * u, y + 16 * u);
 
-  // Top view: lengthwise to scale, sideways four times larger, so that centimetres show.
+  // Top view to scale: front up, from the back of the rear tyre to the front of the front one.
   const gaugeH = 58 * u;
   const top = y + 26 * u,
     bot = y + h - gaugeH - 10 * u;
-  const sx = (bot - top) / (BIKE.L + 0.42);
-  const LAT = 4;
+  const k = Math.min((bot - top) / (BIKE.L + 2 * BIKE.rr + 0.06), (w - 20 * u) / 1.0);
   const ox = x + w / 2,
-    oy = bot - 0.2 * sx;
-  const at = (bx, by) => [ox + by * sx * LAT, oy - bx * sx];
+    oy = bot - (BIKE.rr + 0.03) * k;
+  const at = (bx, by) => [ox + by * k, oy - bx * k];
   const half = S.half;
   const mid = S.mid;
-  // A contact patch magnified LAT times about its centre, so its true shape and angle show.
-  const patch = (bx, by, wd, ln, ang) => {
-    const [px, py] = at(bx, by);
-    const ca = Math.cos(ang),
-      sa = Math.sin(ang);
-    const k = sx * LAT;
-    return [
-      [-ln / 2, -wd / 2],
-      [ln / 2, -wd / 2],
-      [ln / 2, wd / 2],
-      [-ln / 2, wd / 2],
-    ].map(([a, b]) => [px + (a * sa + b * ca) * k, py - (a * ca - b * sa) * k]);
+  line(g, at(-BIKE.rr, 0), at(BIKE.L + BIKE.rr, 0), alpha(COL.chalk, 0.16), 1);
+  const { rear, front } = drawTyresTop(g, at, c, S.d, 1);
+  poly(g, hull([...rear, ...front]), alpha(COL.ok, 0.16), alpha(COL.ok, 0.55), 1);
+  poly(g, rear, '#c9cdd1');
+  poly(g, front, '#c9cdd1');
+  // Handlebar at the steering head, turned with the bars.
+  const hx = axisAt(1.0)[0];
+  const ga = groundSteer(S.d);
+  const grip = (side) => {
+    const p = -0.08,
+      q = side * 0.39;
+    return at(hx + p * Math.cos(ga) - q * Math.sin(ga), p * Math.sin(ga) + q * Math.cos(ga));
   };
-  const ang = groundSteer(S.d);
-  const rearP = patch(0, 0, c.wr, c.lr, 0);
-  const frontP = patch(BIKE.L, frontShift(S.d), c.wf, c.lf, ang);
-  poly(g, hull([...rearP, ...frontP]), alpha(COL.ok, 0.13), alpha(COL.ok, 0.45), 1);
-  // Bike line, wheels and handlebar at their true angles.
-  const dirLine = (p0, a, l0, l1, col, lw) => {
-    const dx = Math.sin(a) * sx,
-      dy = -Math.cos(a) * sx;
-    line(g, [p0[0] + dx * l0, p0[1] + dy * l0], [p0[0] + dx * l1, p0[1] + dy * l1], col, lw);
-  };
-  line(g, at(-0.3, 0), at(BIKE.L, 0), alpha(COL.chalk, 0.22), 1);
-  dirLine(at(0, 0), 0, -0.3, 0.3, alpha(COL.chalk, 0.45), 3 * u);
-  dirLine(at(BIKE.L, frontShift(S.d)), ang, -0.3, 0.3, alpha(COL.chalk, 0.45), 3 * u);
-  dirLine(at(1.0, 0), ang + Math.PI / 2, -0.39, 0.39, alpha(COL.spd, 0.9), 2.5 * u);
-  poly(g, rearP, '#c9cdd1');
-  poly(g, frontP, '#c9cdd1');
+  line(g, grip(-1), grip(1), alpha(COL.spd, 0.9), 2.5 * u);
   // The foot on the asphalt while the bike rests on it.
   if (footK > 0.5 && !fall) {
-    const fp = at(0.5, -FOOT_ARM / LAT);
+    const fp = at(0.5, -FOOT_ARM);
     g.fillStyle = alpha(COL.warn, 0.85);
     g.font = `600 ${9 * u}px ${FONT_MONO}`;
     g.textAlign = 'center';
@@ -452,18 +486,21 @@ function drawSupport(x, y, w, h, narrow) {
   // CoG and the point the tyres push from, at the CoG's station along the bike.
   const off = S.yG - mid;
   const state = Math.abs(off) <= half ? COL.ok : Math.abs(off) <= 2 * half ? COL.warn : '#ef5350';
-  line(g, at(BIKE.b, mid - half), at(BIKE.b, mid + half), alpha(COL.ok, 0.8), 2 * u);
+  line(g, at(BIKE.b, mid - half), at(BIKE.b, mid + half), COL.ok, 3 * u);
   const yPt = at(BIKE.b, S.yP);
   line(g, [yPt[0], yPt[1] - 6 * u], [yPt[0], yPt[1] + 6 * u], COL.chalk, 1.5 * u);
   if (cfg.trend && phase === 'ride') {
     const tp = at(BIKE.b, S.yG + S.yGv * 0.25);
     ring(g, tp, 5 * u, alpha(COL.chalk, 0.8), 1.5);
   }
-  disc(g, at(BIKE.b, S.yG), 5.5 * u, state);
+  disc(g, at(BIKE.b, S.yG), 4.5 * u, state);
+  // Scale: ten centimetres.
+  const sb = [x + w - 10 * u - 0.1 * k, y + 22 * u];
+  line(g, sb, [sb[0] + 0.1 * k, sb[1]], COL.dim, 1.5);
   g.fillStyle = COL.dim;
   g.font = `500 ${9 * u}px ${FONT_MONO}`;
   g.textAlign = 'right';
-  g.fillText(i18n`w bok ×${LAT}`, x + w - 8 * u, y + 16 * u);
+  g.fillText(i18n`10 cm`, x + w - 8 * u, y + 16 * u);
 
   // Gauge: the band under the CoG, centimetres to scale.
   const gy = y + h - gaugeH;

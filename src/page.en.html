@@ -15,7 +15,7 @@
     </div>
     <div class="pads" id="pads">
       <div class="grp body"><button class="pad" data-k="bl">◀ Hips</button><button class="pad" data-k="br">Hips ▶</button></div>
-      <div class="grp mid"><button class="pad fb" data-k="fw">▲ Forward</button><button class="pad act" data-k="act" id="actPad">Start</button><button class="pad fb" data-k="bw">▼ Back</button></div>
+      <div class="grp mid"><button class="pad act" data-k="act" id="actPad">Start</button></div>
       <div class="grp"><button class="pad" data-k="left">◀ Bars</button><button class="pad" data-k="right">Bars ▶</button></div>
     </div>
   </div>
@@ -27,21 +27,19 @@
       <span class="lg"><i style="background:var(--ok)"></i>centre of gravity over the support</span>
       <span class="lg"><i style="background:var(--cone)"></i>bars</span>
       <span class="lg"><i style="background:var(--spd)"></i>hips</span>
-      <span class="lg"><i style="background:var(--warn)"></i>rolling</span>
     </div>
-    <div class="telebox"><canvas id="tele" aria-label="Chart of the lean, the centre of gravity, the bars, the hips and the rolling over the last 12 seconds"></canvas></div>
+    <div class="telebox"><canvas id="tele" aria-label="Chart of the lean, the centre of gravity, the bars and the hips over the last 12 seconds"></canvas></div>
   </section>
 
   <div class="info">
     <section>
       <h3>Controls</h3>
       <ul>
-        <li><kbd>A</kbd> <kbd>D</kbd>: hips left and right over the pegs. With the foot down they move while you hold the key and stay where you leave them. On the pegs a key takes them all the way to its side, and when you let go they return to where they were before you stood up.</li>
+        <li><kbd>A</kbd> <kbd>D</kbd>: hips left and right over the pegs. With the foot down they move while you hold the key and stay where you leave them. On the pegs a key moves them 8 cm towards its side, and when you let go they return to where they were before you stood up.</li>
         <li><kbd>←</kbd> <kbd>→</kbd>: bars. They turn while you hold the key and stay where you leave them.</li>
-        <li><kbd>W</kbd> <kbd>S</kbd> or <kbd>↑</kbd> <kbd>↓</kbd>: bike forward and back. Your body moves the other way over the pegs and rolls the bike a few centimetres. When you let go of the key, your body returns to the middle and the bike rolls back. Works only on the pegs.</li>
         <li><kbd>Space</kbd>: start, then stand up on the pegs. <kbd>P</kbd>: pause.</li>
         <li>The dot on the lean gauge, on the asphalt under the bike and in the support panel is the <b>centre of gravity</b>: green over the support band, yellow just beside it, red far outside it. The ring in the panel shows where it will be a quarter of a second later.</li>
-        <li>On a phone the buttons sit under the picture, and on top of it in landscape. The middle one starts, stands up and pauses; forward and back are above and below it.</li>
+        <li>On a phone the buttons sit under the picture, and on top of it in landscape. The middle one starts, stands up and pauses.</li>
       </ul>
     </section>
     <section>
@@ -60,23 +58,17 @@
       <p>Hips moved towards the lean right the bike only for a moment. The support of the tyres then moves away from under the centre of gravity and the bike keeps falling.</p>
     </section>
     <section>
-      <h3>Bars and rolling</h3>
-      <p>The front tyre cannot slide sideways. When you turn the bars, the frame turns about the rear tyre and the centre of gravity moves 2–3 cm towards the turn. The <b>movement</b> of the bars towards the lean alone rights the bike at once, like a jerk of the hips.</p>
-      <p>While the wheels stand still, bars turned towards the lean keep the centre of gravity on that side. But it is enough for the bike to <b>roll a few centimetres forward</b>: the wheels run along an arc towards the turn and come back under the centre of gravity. Rolling back, the same arc takes the wheels the other way.</p>
-      <p>Hence the classic stance: bars at full lock, hips on the higher peg and small moves of the body forward and back. When the bike leans towards the turn, roll it forward. When it leans the other way, roll it back.</p>
-      <p>Try it with the bike parked: resting on your left leg, the bike sits on the leg harder with the bars at full left lock than with the bars turned right. It also stands more securely on its side stand with the bars turned left.</p>
-    </section>
-    <section>
-      <h3>Rolling without throttle or brake</h3>
-      <p>The wheels roll freely, and your body and the bike push against each other through the pegs and the bars. When your body moves 20 cm back, the bike rolls about 6 cm forward, while the shared centre of gravity hardly moves. Rolling resistance takes the motion away, so the bike stops by itself.</p>
-      <p>The <b>rolling</b> bar shows how far the bike has moved from where it started. With the bars turned the wheels follow an arc, so the bike also turns a little. The attempt ends when a tyre touches the line of the box, after about 60 cm.</p>
+      <h3>Bars</h3>
+      <p>The wheels stand still and the front tyre cannot slide sideways. When you turn the bars, the frame turns about the rear tyre and the centre of gravity moves towards the turn, by about 3 cm at full lock. That is why a bike resting on your left leg sits on the leg harder with the bars turned left than with the bars turned right, and stands more securely on its side stand with the bars turned left.</p>
+      <p>The <b>movement</b> of the bars works the other way, and at once. When you turn the bars a little further towards the side the bike leans to, the bike straightens slightly, by about 0.4° for every 10° of steering. At full lock the bars have nowhere left to go, so this does not happen.</p>
+      <p>Bars turned further, though, move the centre of gravity towards the lean, so the straightening lasts only a moment and the hips have to do the rest. Turning the bars the other way works the other way round: it first deepens the lean a little, then brings the centre of gravity back over the tyres.</p>
     </section>
     <section class="sup-demo">
       <h3>Support band</h3>
       <canvas id="sup" aria-label="Diagram from above: the contact patches and the support band under the centre of gravity"></canvas>
       <input type="range" id="supr" min="-38" max="38" step="1" value="30" aria-label="Steering angle">
       <div class="row"><span>bars to the left</span><span id="supv"></span><span>to the right</span></div>
-      <p>Contact patches at the pressure chosen above the game. The lower the pressure, the longer and wider the patch, and the turned front tyre widens the band even more.</p>
+      <p>Contact patches to scale, at the pressure chosen above the game. At 2 bar the front patch is about the size of a credit card and the rear one is wider. The lower the pressure, the longer the patch. The turned front tyre turns its patch, widens the support band a little and moves it sideways.</p>
     </section>
     <section>
       <h3>Tyre pressure</h3>

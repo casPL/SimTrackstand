@@ -4,7 +4,7 @@
 // Keyboard and the touch pads. Both feed the same controls; the stronger of the two wins.
 
 // prettier-ignore
-const KEYMAP = { ArrowLeft: 'left', ArrowRight: 'right', KeyA: 'bl', KeyD: 'br', ArrowUp: 'fw', KeyW: 'fw', ArrowDown: 'bw', KeyS: 'bw' };
+const KEYMAP = { ArrowLeft: 'left', ArrowRight: 'right', KeyA: 'bl', KeyD: 'br' };
 
 function setPaused(on) {
   if (paused === on) return;

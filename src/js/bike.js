@@ -6,12 +6,16 @@
 // m bike [kg], mr rider [kg], L wheelbase [m], b CoG ahead of the rear axle [m], hb bike CoG height,
 // hr rider CoG height standing on the pegs [m], Ib, Ir roll inertia about their own CoG [kg·m²],
 // rr wheel radius [m], rake [°], trail [m], lock steering lock [°], du rider shift over the pegs [m],
-// crown tyre crown radius [m]
+// tf, tr tyre width, front and rear [m]; pwf, pwr contact patch width of the front and the rear tyre
+// when it covers 40 cm² [m]; crown tyre crown radius, front and rear together [m].
+// Mass, wheelbase, steering and wheels are those of the Supermoto 450 in SimGP8: a 450 cc supermoto
+// on 17" wheels, 120/70 at the front and 160/60 at the rear.
 // prettier-ignore
 const BIKE = {
-  name: 'Sur-Ron SM 17"', color: '#e33b34',
-  m: 85, mr: 80, L: 1.38, b: 0.64, hb: 0.48, hr: 1.12, Ib: 8, Ir: 10,
-  rr: 0.3, rake: 26, trail: 0.09, lock: 38, du: 0.16, crown: 0.05,
+  name: 'Supermoto 450', color: '#e33b34',
+  m: 118, mr: 80, L: 1.49, b: 0.685, hb: 0.6, hr: 1.19, Ib: 13, Ir: 10,
+  rr: 0.3, rake: 26, trail: 0.11, lock: 38, du: 0.16, tf: 0.12, tr: 0.16, pwf: 0.049, pwr: 0.059,
+  crown: 0.07,
 };
 
 const PREP = new Map();
@@ -21,7 +25,7 @@ const PREP = new Map();
  * M, h: total mass and CoG height; J0: roll inertia about the ground line with the rider centred;
  * f: share of the weight on the front; wr, lr, wf, lf: contact patch width and length, rear and
  * front [m]; edge: tyre roll at which the pressure reaches the edge of the patch [rad];
- * cr: tyre roll damping [N·m·s/rad]; crr: rolling resistance coefficient.
+ * cr: tyre roll damping [N·m·s/rad].
  */
 function prep(p) {
   let c = PREP.get(p);
@@ -30,13 +34,15 @@ function prep(p) {
   const M = bk.m + bk.mr;
   const h = (bk.m * bk.hb + bk.mr * bk.hr) / M;
   const f = bk.b / bk.L;
-  const patch = (load) => {
+  // A contact patch is an oval: the load over the pressure gives its area, and a softer tyre
+  // spreads it more along the tyre than across it.
+  const patch = (load, w40) => {
     const A = load / ((p * 100 + P0) * 1000);
-    const w = 0.05 * Math.pow(A / 0.004, 0.35);
-    return [w, A / (0.8 * w)];
+    const w = w40 * Math.pow(A / 0.004, 0.35);
+    return [w, (4 * A) / (Math.PI * w)];
   };
-  const [wr, lr] = patch((1 - f) * M * G);
-  const [wf, lf] = patch(f * M * G);
+  const [wr, lr] = patch((1 - f) * M * G, bk.pwr);
+  const [wf, lf] = patch(f * M * G, bk.pwf);
   c = {
     M,
     h,
@@ -48,7 +54,6 @@ function prep(p) {
     lf,
     edge: (EDGE_DEG + (EDGE_SOFT * (2.2 - p)) / 1.4) * RAD,
     cr: 30,
-    crr: 0.012 + (0.012 * (2.2 - p)) / 1.4,
   };
   PREP.set(p, c);
   return c;
@@ -69,14 +74,16 @@ function frontShift(d) {
   return -BIKE.trail * Math.sin(groundSteer(d));
 }
 
+/** How far an oval patch w wide and l long reaches across the bike line when turned by a [m]. */
+function patchHalf(w, l, a) {
+  return Math.hypot((w / 2) * Math.cos(a), (l / 2) * Math.sin(a));
+}
+
 /** Support under the CoG at steering d: centre and half width of the band the tyres can push from [m]. */
 function support(c, d) {
-  const dg = groundSteer(d);
-  const sd = Math.abs(Math.sin(dg)),
-    cd = Math.cos(dg);
   return {
     mid: c.f * frontShift(d),
-    half: (1 - c.f) * (c.wr / 2) + c.f * ((c.wf / 2) * cd + (c.lf / 2) * sd),
+    half: (1 - c.f) * (c.wr / 2) + c.f * patchHalf(c.wf, c.lf, groundSteer(d)),
   };
 }
 

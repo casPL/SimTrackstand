@@ -5,8 +5,8 @@
 // stands up, then sees the bike late and roughly, decides every 60 ms, and holds a key or lets go.
 // Its gains come from an LQR design on the physics linearised about the posture it stood up in.
 
-const STATE = ['phi', 'om', 'u', 'ud', 'd', 'dd', 'dT', 'w', 'wd', 'vG'];
-const INPUTS = ['hips', 'bars', 'fore'];
+const STATE = ['phi', 'om', 'u', 'ud', 'd', 'dd', 'dT'];
+const INPUTS = ['hips', 'bars'];
 
 const mul = (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, a, k) => s + a * B[k][j], 0)));
 const tr = (A) => A[0].map((_, j) => A.map((r) => r[j]));
@@ -38,7 +38,7 @@ function keysOf(use, b) {
     return i < 0 ? 0 : b[i];
   };
   const pair = (x, plus, minus) => ({ [plus]: Math.max(0, x), [minus]: Math.max(0, -x) });
-  return { ...pair(v('hips'), 'br', 'bl'), ...pair(v('bars'), 'right', 'left'), ...pair(v('fore'), 'fw', 'bw') };
+  return { ...pair(v('hips'), 'br', 'bl'), ...pair(v('bars'), 'right', 'left') };
 }
 
 /** Hip position that leaves nothing on the foot with the bars at d. */
@@ -70,14 +70,14 @@ function posture(core, p, d0) {
 
 /** LQR gains about the posture ref for the inputs in use; one row per input. */
 function gains(core, p, ref, use) {
-  const { step, newState, standUp, BIKE } = core;
+  const { step, newState, standUp, HIP_SWING } = core;
   const next = (x, b) => {
     const s = Object.assign(newState(), ref);
     standUp(s);
     STATE.forEach((k, i) => (s[k] = (ref[k] || 0) + x[i]));
     // The hips as a linear input: the place they head for moves with the key.
     const i = use.indexOf('hips');
-    if (i >= 0) s.uS = ref.uS + b[i] * BIKE.du;
+    if (i >= 0) s.uS = ref.uS + b[i] * HIP_SWING;
     const keys = keysOf(use, b);
     keys.br = keys.bl = 0;
     step(s, p, keys);
@@ -100,7 +100,7 @@ function gains(core, p, ref, use) {
     b[j] = e;
     next(x0, b).forEach((v, i) => (B[i][j] = (v - f0[i]) / e));
   }
-  const Q = diag([100, 1, 10, 0.1, 1, 0.01, 1, 5, 0.1, 10]);
+  const Q = diag([100, 1, 10, 0.1, 1, 0.01, 1]);
   const R = diag(use.map(() => 0.05));
   let P = Q;
   let K;

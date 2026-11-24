@@ -12,6 +12,7 @@ function bikeInfo() {
   $('dblTxt').textContent =
     i18n`Na motocyklu ${bike()} przechył poza krawędzią śladu opon rośnie dwukrotnie mniej więcej co ${fmt(doubling(cfg.p), 2)} s, jeśli nic nie zrobisz.`;
   $('specTitle').textContent = i18n`Dane: ${bike()}, ${bar(cfg.p)}`;
+  const kick = (c.M * c.h * (cogShift(c, 10 * RAD) - cogShift(c, 0))) / c.J0;
   const rows = [
     [i18n`Masa motocykla / kierowcy`, `${BIKE.m} / ${BIKE.mr} kg`],
     [i18n`Środek ciężkości z kierowcą na podnóżkach: wysokość`, `${Math.round(c.h * 100)} cm`],
@@ -22,9 +23,11 @@ function bikeInfo() {
     [i18n`Pas podparcia: kierownica prosto / do oporu`, `±${cm(s0.half)} / ±${cm(s1.half)} cm`],
     [i18n`Opona dochodzi do krawędzi śladu przy przechyle`, `${fmt(c.edge / RAD, 1)}°`],
     [i18n`Kierownica do oporu przesuwa środek ciężkości w stronę skrętu o`, `${cm(cogShift(c, lock))} cm`],
-    [i18n`Przesunięcie bioder nad podnóżkami`, `±${Math.round(BIKE.du * 100)} cm`],
-    [i18n`Przesunięcie ciała przód–tył`, `±${Math.round(FORE * 100)} cm`],
-    [i18n`Opór toczenia opon`, `${fmt(c.crr, 3)}`],
+    [i18n`Dokręcenie kierownicy o 10° od razu prostuje motocykl o`, `${fmt(deg(kick), 1)}°`],
+    [
+      i18n`Biodra nad podnóżkami: zakres / ruch klawiszem na podnóżkach`,
+      `±${Math.round(BIKE.du * 100)} / ${Math.round(HIP_SWING * 100)} cm`,
+    ],
   ];
   $('spec').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   drawSupportDemo();
@@ -76,9 +79,9 @@ function showReady() {
     <h2>${bike()}</h2>
     <p class="meta">${bar(cfg.p)} · ${i18n`tempo ${pct(cfg.tempo)}`}${rec ? ' · ' + i18n`rekord ${fmt(rec)} s` : ''}</p>
     <p>${i18n`Zaczynasz ze <b>stopą na ziemi</b>. Ustaw kierownicę i biodra tak, żeby nacisk na lewą stopę spadł prawie do zera, i dopiero wtedy wstań na podnóżki.`}</p>
-    <p>${i18n`Potem stoisz w kwadracie jak najdłużej. Balansujesz <b>biodrami</b>, <b>kierownicą</b> i <b>ciałem przód–tył</b>. Z kierownicą skręconą w stronę przechyłu przetocz motocykl kilka centymetrów do przodu, a koła wjadą pod środek ciężkości.`}</p>
-    <p>${i18n`Próba kończy się podpórką, gdy środek ciężkości ucieknie o ${DAB_DEG}° od podparcia, albo gdy opona dotknie linii kwadratu.`}</p>
-    <p class="keys">${i18n`<kbd>A</kbd> <kbd>D</kbd> biodra · <kbd>←</kbd> <kbd>→</kbd> kierownica · <kbd>W</kbd> <kbd>S</kbd> przód i tył · <kbd>Spacja</kbd> wstań`}</p>
+    <p>${i18n`Potem stoisz w miejscu jak najdłużej. Balansujesz <b>biodrami</b> i <b>kierownicą</b>. Koła stoją: motocykla nie przetoczysz ciałem.`}</p>
+    <p>${i18n`Dokręcenie kierownicy w stronę przechyłu od razu lekko prostuje motocykl, o ile nie jest już na full locku. Próba kończy się podpórką, gdy środek ciężkości ucieknie o ${DAB_DEG}° od podparcia.`}</p>
+    <p class="keys">${i18n`<kbd>A</kbd> <kbd>D</kbd> biodra · <kbd>←</kbd> <kbd>→</kbd> kierownica · <kbd>Spacja</kbd> wstań`}</p>
     <p>${cfg.tempo < 1 ? i18n`Tempo ${pct(cfg.tempo)}: czas płynie wolniej, fizyka zostaje ta sama.` + ' ' : ''}${i18n`100% to czas rzeczywisty.`}</p>
     <button class="btn go" id="goBtn">${i18n`Start (Spacja)`}</button>
   </div>`;
@@ -86,16 +89,14 @@ function showReady() {
 }
 
 function tipFor(r) {
-  if (r.rolledOut)
-    return i18n`Motocykl wytoczył się z kwadratu. Przetaczaj go krótko i od razu wracaj ciałem na środek. Długie trzymanie przodu albo tyłu wyprowadza motocykl coraz dalej.`;
   if (r.time < 1.5 && r.load > 3)
     return i18n`Przy wstawaniu lewa stopa niosła ${kg(r.load)} kg, więc motocykl od razu poleciał w lewo. Zanim wstaniesz, przesuń biodra w prawo, aż nacisk na stopę spadnie prawie do zera. Kierownica skręcona w lewo dokłada nacisku, w prawo go zmniejsza.`;
   if (r.time < 1.5 && r.load < -2)
     return i18n`Przy wstawaniu motocykl ciągnął już w prawo, więc od razu poleciał na drugą stronę. Przed wstaniem ustaw biodra bliżej środka albo skręć kierownicę bardziej w lewo, aż nacisk na stopę będzie bliski zera.`;
   if (r.heldInto)
-    return i18n`Motocykl przewrócił się w stronę skręconej kierownicy. Dopóki koła stoją, skręcona kierownica trzyma środek ciężkości po stronie skrętu. Gdy motocykl zaczyna się kłaść w stronę skrętu, przetocz go do przodu: koła pojadą łukiem pod środek ciężkości.`;
+    return i18n`Motocykl przewrócił się w stronę skręconej kierownicy. Skręcona kierownica trzyma środek ciężkości po stronie skrętu. Dokręcenie jej dalej prostuje motocykl tylko na chwilę, a na full locku wcale. Gdy motocykl zaczyna się kłaść w stronę skrętu, przesuń biodra na wyższy podnóżek albo odkręć kierownicę trochę w drugą stronę: motocykl najpierw lekko się pogłębi, a potem środek ciężkości wróci nad opony.`;
   if (r.fellAway)
-    return i18n`Motocykl przewrócił się na stronę przeciwną do skrętu kierownicy. Wtedy przetocz go do tyłu: koła pojadą łukiem w drugą stronę, pod środek ciężkości. Pomagają też biodra na wyższym podnóżku.`;
+    return i18n`Motocykl przewrócił się na stronę przeciwną do skrętu kierownicy. Gdy zaczyna się tam kłaść, dokręć kierownicę mocniej w stronę skrętu, jeśli nie jest na full locku: środek ciężkości przesunie się z powrotem nad opony. Pomagają też biodra na wyższym podnóżku.`;
   if (r.wrongBody)
     return i18n`Biodra szły w stronę przechyłu. To prostuje motocykl tylko na chwilę, a opona zjeżdża spod środka ciężkości. Gdy motocykl kładzie się w prawo, dociśnij lewy podnóżek i przesuń biodra w lewo. Motocykl pochyli się pod tobą, a opona wróci pod środek ciężkości.`;
   if (r.time < 4)
@@ -113,7 +114,6 @@ function finish() {
     load: standLoad,
     meanCog: S.t > 0 ? deg(S.sumCog / S.t) : 0,
     intoPct: S.t > 0 ? (100 * S.into) / S.t : 0,
-    rolledOut: S.done === 'roll',
     heldInto: Math.sign(S.d) === side && Math.abs(S.d) > 15 * RAD,
     fellAway: Math.sign(S.d) === -side && Math.abs(S.d) > 15 * RAD,
     wrongBody: Math.sign(S.u) === side && Math.abs(S.u) > 0.4 * BIKE.du,
@@ -128,13 +128,13 @@ function finish() {
   const record = best[k] ? `${fmt(best[k])} s` : '–';
   $('overlay').hidden = false;
   $('overlay').innerHTML = `<div class="card">
-    <h2>${r.rolledOut ? i18n`Wyjazd z kwadratu` : i18n`Podpórka`}</h2>
+    <h2>${i18n`Podpórka`}</h2>
     <div class="stats">
       <div class="stat"><div class="k">${i18n`Czas`}</div><div class="v${isRec ? ' rec' : ''}">${fmt(r.time)} s</div></div>
       <div class="stat"><div class="k">${i18n`Śr. CoG`}</div><div class="v">${fmt(r.meanCog, 1)}°</div></div>
       <div class="stat"><div class="k">${i18n`Kier. w przechył`}</div><div class="v">${fmt(r.intoPct, 0)}%</div></div>
     </div>
-    <p class="meta">${i18n`maks. przechył ${fmt(deg(S.maxLean), 0)}° · maks. toczenie ${Math.round(S.maxRoll * 100)} cm · na stopie przy wstaniu ${kg(r.load)} kg · rekord ${record} · ${bar(cfg.p)} · tempo ${pct(cfg.tempo)}`}</p>
+    <p class="meta">${i18n`maks. przechył ${fmt(deg(S.maxLean), 0)}° · na stopie przy wstaniu ${kg(r.load)} kg · rekord ${record} · ${bar(cfg.p)} · tempo ${pct(cfg.tempo)}`}</p>
     ${isRec ? `<p><b>${i18n`Nowy rekord.`}</b></p>` : ''}
     <p class="tip">${tipFor(r)}</p>
     <button class="btn go" id="goBtn">${i18n`Jeszcze raz (Spacja)`}</button>

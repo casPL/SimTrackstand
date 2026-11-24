@@ -15,7 +15,7 @@
     </div>
     <div class="pads" id="pads">
       <div class="grp body"><button class="pad" data-k="bl">◀ Biodra</button><button class="pad" data-k="br">Biodra ▶</button></div>
-      <div class="grp mid"><button class="pad fb" data-k="fw">▲ Przód</button><button class="pad act" data-k="act" id="actPad">Start</button><button class="pad fb" data-k="bw">▼ Tył</button></div>
+      <div class="grp mid"><button class="pad act" data-k="act" id="actPad">Start</button></div>
       <div class="grp"><button class="pad" data-k="left">◀ Kier.</button><button class="pad" data-k="right">Kier. ▶</button></div>
     </div>
   </div>
@@ -27,21 +27,19 @@
       <span class="lg"><i style="background:var(--ok)"></i>środek ciężkości nad podparciem</span>
       <span class="lg"><i style="background:var(--cone)"></i>kierownica</span>
       <span class="lg"><i style="background:var(--spd)"></i>biodra</span>
-      <span class="lg"><i style="background:var(--warn)"></i>toczenie</span>
     </div>
-    <div class="telebox"><canvas id="tele" aria-label="Wykres przechyłu, środka ciężkości, kierownicy, bioder i toczenia z ostatnich 12 sekund"></canvas></div>
+    <div class="telebox"><canvas id="tele" aria-label="Wykres przechyłu, środka ciężkości, kierownicy i bioder z ostatnich 12 sekund"></canvas></div>
   </section>
 
   <div class="info">
     <section>
       <h3>Sterowanie</h3>
       <ul>
-        <li><kbd>A</kbd> <kbd>D</kbd>: biodra w lewo i w prawo nad podnóżkami. Ze stopą na ziemi przesuwają się, póki trzymasz klawisz, i zostają. Na podnóżkach klawisz przesuwa je do końca w swoją stronę, a po puszczeniu wracają do ustawienia sprzed wstania.</li>
+        <li><kbd>A</kbd> <kbd>D</kbd>: biodra w lewo i w prawo nad podnóżkami. Ze stopą na ziemi przesuwają się, póki trzymasz klawisz, i zostają. Na podnóżkach klawisz przesuwa je o 8 cm w swoją stronę, a po puszczeniu wracają do ustawienia sprzed wstania.</li>
         <li><kbd>←</kbd> <kbd>→</kbd>: kierownica. Skręca, póki trzymasz klawisz, i zostaje tam, gdzie ją puścisz.</li>
-        <li><kbd>W</kbd> <kbd>S</kbd> lub <kbd>↑</kbd> <kbd>↓</kbd>: motocykl do przodu i do tyłu. Ciało idzie nad podnóżkami w drugą stronę i przetacza motocykl o kilka centymetrów. Po puszczeniu klawisza ciało wraca na środek, a motocykl toczy się z powrotem. Działa tylko na podnóżkach.</li>
         <li><kbd>Spacja</kbd>: start, potem wstanie na podnóżki. <kbd>P</kbd>: pauza.</li>
         <li>Kropka na wskaźniku przechyłu, na asfalcie pod motocyklem i w panelu podparcia to <b>środek ciężkości</b>: zielona nad pasem podparcia, żółta tuż obok, czerwona daleko poza nim. Kółko w panelu pokazuje, gdzie będzie za ćwierć sekundy.</li>
-        <li>Na telefonie przyciski są pod obrazem, a w poziomie na obrazie. Środkowy to start, wstanie i pauza, nad nim i pod nim są przód i tył.</li>
+        <li>Na telefonie przyciski są pod obrazem, a w poziomie na obrazie. Środkowy to start, wstanie i pauza.</li>
       </ul>
     </section>
     <section>
@@ -60,23 +58,17 @@
       <p>Biodra w stronę przechyłu prostują motocykl tylko na chwilę. Opona zjeżdża wtedy spod środka ciężkości i motocykl leci dalej.</p>
     </section>
     <section>
-      <h3>Kierownica i toczenie</h3>
-      <p>Przednia opona nie może się ślizgać w bok. Gdy skręcasz kierownicę, rama obraca się wokół tylnej opony, a środek ciężkości przesuwa się o 2–3 cm w stronę skrętu. Sam <b>ruch</b> kierownicy w stronę przechyłu od razu prostuje motocykl, tak jak szarpnięcie bioder.</p>
-      <p>Dopóki koła stoją, kierownica skręcona w stronę przechyłu trzyma środek ciężkości po tej stronie. Wystarczy jednak, że motocykl <b>przetoczy się o kilka centymetrów do przodu</b>: koła jadą łukiem w stronę skrętu i wjeżdżają pod środek ciężkości. Do tyłu ten sam łuk prowadzi koła w drugą stronę.</p>
-      <p>Stąd klasyczna pozycja: kierownica skręcona do oporu, biodra na wyższym podnóżku i małe ruchy ciała przód–tył. Gdy motocykl kładzie się w stronę skrętu, przetocz go do przodu. Gdy kładzie się w drugą stronę, do tyłu.</p>
-      <p>Sprawdź na postoju: oparty na lewej nodze motocykl z kierownicą skręconą w lewo do oporu mocniej siada na nodze niż z kierownicą w prawo. Tak samo stoi pewniej na stopce bocznej z kierownicą w lewo.</p>
-    </section>
-    <section>
-      <h3>Toczenie bez gazu i hamulca</h3>
-      <p>Koła toczą się swobodnie, a ciało i motocykl odpychają się od siebie przez podnóżki i kierownicę. Gdy ciało idzie 20 cm do tyłu, motocykl przetacza się około 6 cm do przodu, a wspólny środek ciężkości prawie stoi. Opory toczenia wytracają ruch, więc motocykl sam się zatrzymuje.</p>
-      <p>Pasek <b>toczenie</b> pokazuje, jak daleko motocykl odjechał od miejsca startu. Przy skręconej kierownicy koła jadą po łuku, więc motocykl przy okazji lekko się obraca. Próba kończy się, gdy opona dotknie linii kwadratu, czyli po około 60 cm.</p>
+      <h3>Kierownica</h3>
+      <p>Koła stoją, a przednia opona nie może się ślizgać w bok. Gdy skręcasz kierownicę, rama obraca się wokół tylnej opony, a środek ciężkości przesuwa się w stronę skrętu, do oporu o mniej więcej 3 cm. Dlatego motocykl oparty na lewej nodze z kierownicą skręconą w lewo mocniej siada na nodze niż z kierownicą w prawo, a na stopce bocznej stoi pewniej z kierownicą w lewo.</p>
+      <p>Sam <b>ruch</b> kierownicy działa od razu w drugą stronę. Gdy dokręcisz kierownicę w stronę, w którą motocykl się przechyla, motocykl lekko się prostuje, mniej więcej o 0,4° na każde 10° skrętu. Na full locku kierownica nie ma już dokąd iść, więc tego efektu nie ma.</p>
+      <p>Dokręcona kierownica przesuwa jednak środek ciężkości w stronę przechyłu, więc to prostowanie trwa chwilę i resztę muszą zrobić biodra. Skręt w drugą stronę działa odwrotnie: najpierw odrobinę pogłębia przechył, a potem sprowadza środek ciężkości z powrotem nad opony.</p>
     </section>
     <section class="sup-demo">
       <h3>Pas podparcia</h3>
       <canvas id="sup" aria-label="Schemat z góry: ślady opon i pas podparcia pod środkiem ciężkości"></canvas>
       <input type="range" id="supr" min="-38" max="38" step="1" value="30" aria-label="Skręt kierownicy">
       <div class="row"><span>kierownica w lewo</span><span id="supv"></span><span>w prawo</span></div>
-      <p>Ślady opon przy ciśnieniu wybranym nad grą. Im niższe ciśnienie, tym dłuższy i szerszy ślad, a skręcona przednia opona poszerza pas jeszcze bardziej.</p>
+      <p>Ślady opon w skali, przy ciśnieniu wybranym nad grą. Przy 2 bar przedni ślad ma mniej więcej wielkość karty płatniczej, tylny jest szerszy. Im niższe ciśnienie, tym dłuższy ślad. Skręcona przednia opona obraca swój ślad, trochę poszerza pas podparcia i przesuwa go w bok.</p>
     </section>
     <section>
       <h3>Ciśnienie w oponach</h3>

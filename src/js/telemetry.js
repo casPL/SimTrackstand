@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Maciej Kasprzyk
 //
-// The last 12 seconds: lean of the bike and of the CoG, the handlebar, the hips and the rolling.
+// The last 12 seconds: lean of the bike and of the CoG, the handlebar and the hips.
 
 const teleCanvas = $('tele');
 const tctx = teleCanvas.getContext('2d');
@@ -15,7 +15,6 @@ function recordTrace() {
     cog: deg(S.cogLean),
     d: S.d / (BIKE.lock * RAD),
     body: S.u / BIKE.du,
-    roll: S.x / ROLL_SCALE,
   });
   while (trace.length && trace[0].t < S.t - TELE_SPAN - 0.5) trace.shift();
   teleDirty = true;
@@ -56,7 +55,6 @@ function drawTele() {
     tctx.setLineDash([]);
   };
   plot((p) => mid - p.body * (bot - top) * 0.22, alpha(COL.spd, 0.85), 1.2);
-  plot((p) => mid - clamp(p.roll, -1.5, 1.5) * (bot - top) * 0.3, alpha(COL.warn, 0.9), 1.2, [2, 3]);
   plot((p) => mid - p.d * (bot - top) * 0.4, alpha(COL.cone, 0.9), 1.4, [5, 3]);
   plot((p) => ty(p.cog), COL.ok, 1.6);
   plot((p) => ty(p.phi), COL.chalk, 2);

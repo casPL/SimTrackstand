@@ -3,8 +3,9 @@
 //
 // The bike and the rider in perspective, seen by a camera behind and to the left of the bike.
 // Points are given in the bike's frame (x forward from the rear contact patch, y to the right, z up),
-// rolled by the lean about the line of the tyres and projected by the camera. Solid parts are
-// extruded profiles lit by one lamp; parts are drawn from the furthest to the nearest.
+// rolled by the lean about the line of the tyres and projected by the camera. The wheels stand still,
+// so the bike's frame is also the world's. Solid parts are extruded profiles lit by one lamp; parts
+// are drawn from the furthest to the nearest.
 
 const RIDER_COL = {
   helmet: '#ece8dd',
@@ -62,18 +63,6 @@ function roll(p, phi) {
   return [p[0], p[1] * c + p[2] * s, -p[1] * s + p[2] * c];
 }
 
-/** A direction of the bike turned to its heading yaw. */
-function turn(p, yaw) {
-  const c = Math.cos(yaw),
-    s = Math.sin(yaw);
-  return [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]];
-}
-
-/** A point of the bike (already rolled) put where the rear tyre stands, turned to the heading. */
-function place(p, pose) {
-  return v3.add(turn(p, pose.yaw || 0), [pose.X || 0, pose.Y || 0, 0]);
-}
-
 /** Rotation of v by angle t about the unit axis k through point o. */
 function rotAbout(v, o, k, t) {
   const p = v3.sub(v, o);
@@ -117,6 +106,12 @@ const RAKE = BIKE.rake * RAD;
 const AXIS = [Math.sin(RAKE), 0, -Math.cos(RAKE)]; // down and forward along the steering axis
 const AXIS_Q = [BIKE.L + BIKE.trail, 0, 0];
 const axisAt = (z) => [AXIS_Q[0] - z * Math.tan(RAKE), 0, z];
+// The frame, the body and the rider are drawn for a steering head 0.98 m ahead of the rear patch;
+// everything ahead of the rear axle stretches to where the head of this bike is.
+const LONG = axisAt(1.0)[0] / 0.98;
+const fwd = (x) => (x > 0 ? x * LONG : x);
+const lng = (prof) => prof.map(([x, z]) => [fwd(x), z]);
+const at3 = (x, y, z) => [fwd(x), y, z];
 const HEAD = axisAt(1.0);
 const FORK_FWD = [Math.cos(RAKE), 0, Math.sin(RAKE)];
 
@@ -127,7 +122,7 @@ const FORK_FWD = [Math.cos(RAKE), 0, Math.sin(RAKE)];
 function drawBike3d(g, cam, pose) {
   const bk = BIKE;
   const phi = pose.phi;
-  const W = (p) => place(roll(p, phi), pose);
+  const W = (p) => roll(p, phi);
   const S = (p) => cam.proj(W(p));
   const steerT = -pose.d;
   const steer = (p) => rotAbout(p, HEAD, AXIS, steerT);
@@ -241,7 +236,7 @@ function drawBike3d(g, cam, pose) {
   const frontAxle = [bk.L, 0, bk.rr];
 
   // Front end, turning with the bars about the steering axis.
-  part('frontWheel', () => wheel(frontAxle, 0.055, steer, true));
+  part('frontWheel', () => wheel(frontAxle, bk.tf / 2, steer, true));
   part('fork', () => {
     for (const y of [-0.075, 0.075]) {
       const lo = v3.add(frontAxle, [0, y, 0]);
@@ -276,12 +271,12 @@ function drawBike3d(g, cam, pose) {
     prism(cowl, -0.1, 0.1, '#1b1d20', (p) => steer(v3.add(f(p[0], p[2]), [0, p[1], 0])));
   });
 
-  // Frame, motor, battery case and red side panels.
+  // Frame, engine and red side panels.
   part('frame', () => {
-    seg([0.28, 0, 0.4], [0.47, 0, 0.78], '#d8a21f', 0.05);
-    prism(circle(0.66, 0.36, 0.085, 18), -0.085, 0.085, '#3a3f45');
+    seg(at3(0.28, 0, 0.4), at3(0.47, 0, 0.78), '#d8a21f', 0.05);
+    prism(lng(circle(0.66, 0.36, 0.085, 18)), -0.085, 0.085, '#3a3f45');
     prism(
-      [
+      lng([
         [1.0, 0.99],
         [0.93, 1.02],
         [0.44, 0.88],
@@ -289,7 +284,7 @@ function drawBike3d(g, cam, pose) {
         [0.44, 0.44],
         [0.78, 0.38],
         [0.99, 0.66],
-      ],
+      ]),
       -0.1,
       0.1,
       '#2b2f34',
@@ -298,18 +293,18 @@ function drawBike3d(g, cam, pose) {
   for (const sideY of [-1, 1]) {
     part(sideY < 0 ? 'panelL' : 'panelR', () => {
       prism(
-        [
+        lng([
           [0.93, 0.95],
           [0.55, 0.86],
           [0.42, 0.74],
           [0.5, 0.55],
           [0.9, 0.6],
-        ],
+        ]),
         sideY * 0.112,
         sideY * 0.125,
         col,
       );
-      if (sideY < 0) numberOn(g, cam, W, [0.66, -0.126, 0.73], 0.16, '8', '#16181a', [1, 0, 0], [0, 0, 1]);
+      if (sideY < 0) numberOn(g, cam, W, at3(0.66, -0.126, 0.73), 0.16, '8', '#16181a', [1, 0, 0], [0, 0, 1]);
     });
   }
 
@@ -317,28 +312,28 @@ function drawBike3d(g, cam, pose) {
   for (const sideY of [-1, 1]) {
     part(sideY < 0 ? 'armL' : 'armR', () =>
       prism(
-        [
+        lng([
           [-0.05, 0.27],
           [0.6, 0.38],
           [0.6, 0.46],
           [-0.05, 0.34],
-        ],
+        ]),
         sideY * 0.07,
         sideY * 0.1,
         '#9aa1a8',
       ),
     );
   }
-  part('rearWheel', () => wheel([0, 0, bk.rr], 0.062, (p) => p, false));
+  part('rearWheel', () => wheel([0, 0, bk.rr], bk.tr / 2, (p) => p, false));
   part('seat', () =>
     prism(
-      [
+      lng([
         [-0.12, 0.86],
         [0.8, 0.86],
         [0.84, 0.9],
         [0.79, 0.94],
         [-0.1, 0.93],
-      ],
+      ]),
       -0.088,
       0.088,
       '#17191c',
@@ -346,7 +341,7 @@ function drawBike3d(g, cam, pose) {
   );
   part('tail', () => {
     prism(
-      [
+      lng([
         [-0.42, 0.79],
         [-0.4, 0.83],
         [0.05, 0.87],
@@ -354,7 +349,7 @@ function drawBike3d(g, cam, pose) {
         [0.26, 0.76],
         [0.0, 0.72],
         [-0.39, 0.745],
-      ],
+      ]),
       -0.072,
       0.072,
       col,
@@ -392,12 +387,12 @@ function drawBike3d(g, cam, pose) {
   for (const sideY of [-1, 1])
     part(sideY < 0 ? 'pegL' : 'pegR', () =>
       prism(
-        [
+        lng([
           [0.37, 0.355],
           [0.47, 0.355],
           [0.47, 0.385],
           [0.37, 0.385],
-        ],
+        ]),
         sideY * 0.11,
         sideY * 0.25,
         '#4a5056',
@@ -554,36 +549,17 @@ function drawBike3d(g, cam, pose) {
 /** Where the rider's joints are in the world: hips over the pegs, legs and arms reaching the pegs and grips. */
 function riderRig(pose) {
   const phi = pose.phi;
-  const yaw = pose.yaw || 0;
-  const W = (p) => place(roll(p, phi), pose);
-  const dir = (p) => turn(roll(p, phi), yaw);
+  const W = (p) => roll(p, phi);
   const steer = (p) => rotAbout(p, HEAD, AXIS, -pose.d);
   const barAt = (y) => steer([HEAD[0] - 0.08, y, HEAD[2] + 0.1]);
   // With a foot reaching down to the asphalt the hips drop and the other knee bends.
   const sit = 0.1 * Math.max(pose.foot, pose.dab);
-  const fore = pose.w || 0;
-  const hip = [0.3 + fore, pose.u, 0.97 - sit - 0.25 * fore * fore];
+  const hip = at3(0.3, pose.u, 0.97 - sit);
   const hipW = W(hip);
   const tilt = 0.35 * phi;
-  // The torso leans over the bars as the hips go back, and straightens as they come forward.
-  const pitch = -0.9 * fore;
-  const T = (off) =>
-    v3.add(
-      hipW,
-      turn(
-        roll(
-          [
-            off[0] * Math.cos(pitch) + off[2] * Math.sin(pitch),
-            off[1],
-            -off[0] * Math.sin(pitch) + off[2] * Math.cos(pitch),
-          ],
-          tilt,
-        ),
-        yaw,
-      ),
-    );
-  const pegW = (side) => W([0.42, side * 0.19, 0.42]);
-  const groundFoot = (side) => place([0.48, side * FOOT_ARM + Math.sin(phi) * 0.1, 0.06], pose);
+  const T = (off) => v3.add(hipW, roll(off, tilt));
+  const pegW = (side) => W(at3(0.42, side * 0.19, 0.42));
+  const groundFoot = (side) => at3(0.48, side * FOOT_ARM + Math.sin(phi) * 0.1, 0.06);
   const ankle = (side) => {
     if (side < 0 && pose.foot > 0) return v3.mix(pegW(side), groundFoot(side), pose.foot);
     if (pose.dab && side === pose.side) return v3.mix(pegW(side), groundFoot(side), pose.dab);
@@ -599,7 +575,7 @@ function riderRig(pose) {
     const along = (lt * lt - ls * ls + L0 * L0) / (2 * L0);
     const out = Math.sqrt(Math.max(0, lt * lt - along * along));
     const dn = v3.norm(dd);
-    let bend = v3.norm(dir([1, side * 0.3, 0.05]));
+    let bend = v3.norm(roll([1, side * 0.3, 0.05], phi));
     bend = v3.norm(v3.sub(bend, v3.mul(dn, v3.dot(bend, dn))));
     const knee = v3.add(v3.add(hj, v3.mul(dn, along)), v3.mul(bend, out));
     return { hj, knee, an };
@@ -612,7 +588,7 @@ function riderRig(pose) {
     const la = 0.32;
     const out = Math.sqrt(Math.max(0, la * la - (L0 / 2) * (L0 / 2)));
     const dn = v3.norm(dd);
-    let bend = v3.norm(turn([0.1, side, -0.5], yaw));
+    let bend = v3.norm([0.1, side, -0.5]);
     bend = v3.norm(v3.sub(bend, v3.mul(dn, v3.dot(bend, dn))));
     const el = v3.add(v3.add(sh, v3.mul(dn, L0 / 2)), v3.mul(bend, out));
     return { sh, el, grip };
@@ -642,16 +618,17 @@ function shadowShapes(g, cam, pose) {
       B = sh(b);
     line(g, A, B, '#000', Math.max(1, cam.px(wM, (A[2] + B[2]) / 2)));
   };
-  const wheel = (x, xf) => {
+  const wheel = (x, wd, xf) => {
     const out = [];
     for (let i = 0; i < 18; i++) {
       const a = (i / 18) * Math.PI * 2;
-      for (const y of [-0.06, 0.06]) out.push(W(xf([x + Math.cos(a) * BIKE.rr, y, BIKE.rr + Math.sin(a) * BIKE.rr])));
+      for (const y of [-wd / 2, wd / 2])
+        out.push(W(xf([x + Math.cos(a) * BIKE.rr, y, BIKE.rr + Math.sin(a) * BIKE.rr])));
     }
     return out;
   };
-  blob(wheel(0, (p) => p));
-  blob(wheel(BIKE.L, steer));
+  blob(wheel(0, BIKE.tr, (p) => p));
+  blob(wheel(BIKE.L, BIKE.tf, steer));
   const body = [];
   for (const [x, z] of [
     [-0.43, 0.76],
@@ -663,7 +640,7 @@ function shadowShapes(g, cam, pose) {
     [0.4, 0.3],
     [0.0, 0.3],
   ])
-    for (const y of [-0.1, 0.1]) body.push(W([x, y, z]));
+    for (const y of [-0.1, 0.1]) body.push(W(at3(x, y, z)));
   blob(body);
   bar(W(steer([BIKE.L, 0, BIKE.rr])), W(steer(HEAD)), 0.12);
   bar(W(rig.barAt(-0.39)), W(rig.barAt(0.39)), 0.05);
