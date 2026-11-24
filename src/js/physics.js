@@ -3,7 +3,7 @@
 //
 // One time step of the standing bike. The bike with the rider rolls about the line where the tyres
 // touch the asphalt, as an inverted pendulum. Gravity acts between the CoG and the point the tyres
-// push from, which moves across the contact patches as the tyres roll onto their side. Moving the
+// push from, which moves across the balance zone as the tyres roll onto their side. Moving the
 // hips over the pegs rolls the bike the other way. Turning the bars turns the frame about the rear
 // tyre, because the front patch cannot slide: the CoG moves across the tyre line towards the side
 // the bars turn, and while it moves, the bike rolls the other way. The wheels stand still.
@@ -12,18 +12,18 @@
  * t: time on the pegs; phi, om: roll angle and rate; u, ud, uT, uS: hips over the pegs, their rate,
  * target and where they were set with the foot down [m]; d, dd, dT: steering angle, rate and
  * target; sx, sv: CoG shift across the tyre line made by the steering, and its rate [m]; yG, yGv,
- * yP: CoG, its rate and the point the tyres push from, across the bike line [m]; mid, half: the
- * support band; edge: tyres past the edge of their patches; cogLean: CoG angle from the middle of
- * the band; foot: the bike rests on the left foot; footLoad: what the foot carries [N]; done: 'dab'
- * when a foot goes down; sumCog, maxLean, into: statistics (into: time with the bars turned
- * towards the lean).
+ * yP: CoG, its rate and the point the tyres push from, across the bike line [m]; mid, half, zone:
+ * the band between the patches and the balance zone around it; edge: support past the zone;
+ * cogLean: CoG angle from the middle of the band; foot: the bike rests on the left foot; footLoad:
+ * what the foot carries [N]; done: 'dab' when a foot goes down; sumCog, maxLean, into: statistics
+ * (into: time with the bars turned towards the lean).
  */
 function newState() {
   // prettier-ignore
   return {
     t: 0, phi: FOOT_LEAN * RAD, om: 0, u: 0, ud: 0, uT: 0, uS: 0, d: 0, dd: 0, dT: 0, sx: 0, sv: 0,
-    yG: 0, yGv: 0, yP: 0, mid: 0, half: 0.03, edge: false, cogLean: 0, foot: true, footLoad: 0,
-    done: null, sumCog: 0, maxLean: 0, into: 0,
+    yG: 0, yGv: 0, yP: 0, mid: 0, half: 0.03, zone: 0.06, edge: false, cogLean: 0, foot: true,
+    footLoad: 0, done: null, sumCog: 0, maxLean: 0, into: 0,
   };
 }
 
@@ -67,9 +67,10 @@ function step(s, p, inp) {
   const sup = support(c, s.d);
   s.mid = sup.mid;
   s.half = sup.half;
+  s.zone = sup.zone;
   const cs = Math.cos(s.phi),
     sn = Math.sin(s.phi);
-  s.edge = Math.abs(s.phi) > c.edge;
+  s.edge = Math.abs(s.phi) > edgeLean(c, s.d);
   s.yP = pushPoint(c, s.phi, s.d);
   s.yG = c.h * sn + (bk.mr * s.u * cs) / c.M;
   s.yGv = c.h * cs * s.om + (bk.mr * (s.ud * cs - s.u * sn * s.om)) / c.M;

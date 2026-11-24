@@ -2,7 +2,8 @@
 // Copyright (C) 2026 Maciej Kasprzyk
 //
 // The support diagram under the game: the tyres and their contact patches from above, to scale, for
-// a chosen steering angle, with both patches enlarged below.
+// a chosen steering angle, the band between the patches and the wider balance zone of the game, with
+// both patches enlarged below.
 
 const demoCanvas = $('sup');
 const demoCtx = demoCanvas.getContext('2d');
@@ -16,7 +17,7 @@ function drawSupportDemo() {
   const sup = support(c, d);
   const side = sup.mid < -0.001 ? i18n`w lewo` : sup.mid > 0.001 ? i18n`w prawo` : '';
   $('supv').textContent =
-    i18n`pas ±${fmt(sup.half * 100, 1)} cm` +
+    i18n`pas opon ±${fmt(sup.half * 100, 1)} cm · strefa w grze ±${fmt(sup.zone * 100, 1)} cm` +
     (side ? ' · ' + i18n`środek ${fmt(Math.abs(sup.mid) * 100, 1)} cm ${side}` : '');
   g.font = `500 11px ${FONT_MONO}`;
 
@@ -32,12 +33,14 @@ function drawSupportDemo() {
   const at = (bx, by) => [x0 + (bx + BIKE.rr + 0.03) * k1, oy + by * k1];
   line(g, at(-BIKE.rr, 0), at(BIKE.L + BIKE.rr, 0), alpha(COL.chalk, 0.16), 1);
   const { rear, front } = drawTyresTop(g, at, c, d, 1);
-  poly(g, hull([...rear, ...front]), alpha(COL.ok, 0.16), alpha(COL.ok, 0.55), 1);
+  poly(g, zoneTop(c, d, at), alpha(COL.ok, 0.16), alpha(COL.ok, 0.55), 1);
+  poly(g, hull([...rear, ...front]), alpha(COL.chalk, 0.1), alpha(COL.chalk, 0.4), 1);
   poly(g, rear, '#c9cdd1');
   poly(g, front, '#c9cdd1');
-  line(g, at(BIKE.b, sup.mid - sup.half), at(BIKE.b, sup.mid + sup.half), COL.ok, 3);
+  line(g, at(BIKE.b, sup.mid - sup.zone), at(BIKE.b, sup.mid + sup.zone), COL.ok, 3);
   const [gx, gy] = at(BIKE.b, 0);
-  line(g, [gx, 19], [gx, gy - 0.08 * k1 - 2], alpha(COL.chalk, 0.2), 1);
+  const lead = gy - (Math.abs(sup.mid) + sup.zone) * k1 - 3;
+  if (lead > 22) line(g, [gx, 19], [gx, lead], alpha(COL.chalk, 0.2), 1);
   disc(g, [gx, gy], 3.5, COL.chalk);
   g.fillStyle = COL.muted;
   g.textAlign = 'center';
@@ -51,7 +54,7 @@ function drawSupportDemo() {
   g.fillText(i18n`prawa strona`, left, oy + rearH + 13);
   g.textAlign = 'right';
   g.fillText(i18n`przód`, right, 14);
-  g.fillText(i18n`w skali`, at(BIKE.L - 0.3, 0)[0], oy + rearH + 13);
+  g.fillText(i18n`w skali`, at(BIKE.L - 0.3, 0)[0], oy + reach + 2);
 
   // Both patches enlarged to the same scale: the rear one, and the front one with the point where its
   // steering axis meets the ground. The labels keep a strip at the top of each box to themselves.

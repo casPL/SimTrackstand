@@ -24,7 +24,8 @@ const PREP = new Map();
  * Constants used by every physics step, computed once per pressure p [bar].
  * M, h: total mass and CoG height; J0: roll inertia about the ground line with the rider centred;
  * f: share of the weight on the front; wr, lr, wf, lf: contact patch width and length, rear and
- * front [m]; edge: tyre roll at which the pressure reaches the edge of the patch [rad];
+ * front [m]; follow: share of the CoG's sideways movement that the support follows inside the
+ * balance zone as the bike leans;
  * cr: tyre roll damping [N·m·s/rad].
  */
 function prep(p) {
@@ -52,7 +53,7 @@ function prep(p) {
     lr,
     wf,
     lf,
-    edge: (EDGE_DEG + (EDGE_SOFT * (2.2 - p)) / 1.4) * RAD,
+    follow: FOLLOW + (FOLLOW_SOFT * (2.2 - p)) / 1.4,
     cr: 30,
   };
   PREP.set(p, c);
@@ -79,25 +80,33 @@ function patchHalf(w, l, a) {
   return Math.hypot((w / 2) * Math.cos(a), (l / 2) * Math.sin(a));
 }
 
-/** Support under the CoG at steering d: centre and half width of the band the tyres can push from [m]. */
+/**
+ * Support under the CoG at steering d [m]: mid and half, the centre and half width of the band
+ * between the contact patches; zone, the half width of the balance zone of the game around mid. The
+ * zone is wider than the band, because a rider reacts to a picture on a screen much later than to the
+ * bike moving under the body.
+ */
 function support(c, d) {
-  return {
-    mid: c.f * frontShift(d),
-    half: (1 - c.f) * (c.wr / 2) + c.f * patchHalf(c.wf, c.lf, groundSteer(d)),
-  };
+  const half = (1 - c.f) * (c.wr / 2) + c.f * patchHalf(c.wf, c.lf, groundSteer(d));
+  return { mid: c.f * frontShift(d), half, zone: ZONE * half };
+}
+
+/** Lean at which the support reaches the edge of the balance zone with the bars at d [rad]. */
+function edgeLean(c, d) {
+  return support(c, d).zone / (c.follow * c.h);
 }
 
 /**
- * Where the tyres push from across the bike line at lean phi and steering d [m]. Each tyre rolls
- * across its patch up to the edge, then onto its round crown. With the front wheel turned, leaning
- * also moves its lowest point along the rim towards the low side.
+ * Where the tyres push from across the bike line at lean phi and steering d [m]. As the tyres roll,
+ * the support moves across the balance zone up to its edge, then the tyres roll onto their round
+ * crown. With the front wheel turned, leaning also moves its lowest point along the rim towards the
+ * low side.
  */
 function pushPoint(c, phi, d) {
   const sup = support(c, d);
+  const edge = edgeLean(c, d);
   const across =
-    Math.abs(phi) > c.edge
-      ? Math.sign(phi) * (sup.half + BIKE.crown * (Math.abs(phi) - c.edge))
-      : (sup.half * phi) / c.edge;
+    Math.abs(phi) > edge ? Math.sign(phi) * (sup.zone + BIKE.crown * (Math.abs(phi) - edge)) : (sup.zone * phi) / edge;
   const sd = Math.sin(groundSteer(d));
   return sup.mid + across + c.f * BIKE.rr * sd * sd * Math.sin(phi);
 }

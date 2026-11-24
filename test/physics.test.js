@@ -9,8 +9,8 @@ const { loadCore } = require('../build.js');
 const { ride, balancedHips } = require('./bot.js');
 
 // prettier-ignore
-const core = loadCore(['BIKE', 'PRESSURES', 'step', 'newState', 'standUp', 'prep', 'support', 'DT', 'RAD', 'G', 'HIP_SWING', 'P0']);
-const { BIKE, PRESSURES, step, newState, standUp, prep, support, RAD, G, P0 } = core;
+const core = loadCore(['BIKE', 'PRESSURES', 'step', 'newState', 'standUp', 'prep', 'support', 'edgeLean', 'doubling', 'DT', 'RAD', 'G', 'HIP_SWING', 'P0', 'ZONE']);
+const { BIKE, PRESSURES, step, newState, standUp, prep, support, edgeLean, doubling, RAD, G, P0, ZONE } = core;
 const LOCK = BIKE.lock * RAD;
 
 /** Steps s at pressure p with the controls given by ctl(s) for up to seconds, or until the run ends. */
@@ -42,7 +42,7 @@ test('with the foot down nothing moves, and the foot carries what gravity leaves
     for (let i = 0; i < 240; i++) step(s, p, { left: 1, br: 1 });
     assert.equal(s.phi, phi);
     assert.equal(s.t, 0, 'the clock starts only on the pegs');
-    assert.ok(setUp(p).footLoad / G > 3, 'resting on the foot, the bike leans on it');
+    assert.ok(setUp(p).footLoad / G > 1, 'resting on the foot, the bike leans on it');
   }
 });
 
@@ -121,9 +121,22 @@ test('lower pressure and turned bars widen the support band; soft tyres reach th
   const half = (p, d) => support(prep(p), d).half;
   for (let i = 1; i < PRESSURES.length; i++) {
     assert.ok(half(PRESSURES[i - 1], 0) > half(PRESSURES[i], 0));
-    assert.ok(prep(PRESSURES[i - 1]).edge > prep(PRESSURES[i]).edge);
+    assert.ok(edgeLean(prep(PRESSURES[i - 1]), 0) > edgeLean(prep(PRESSURES[i]), 0));
   }
   for (const p of PRESSURES) assert.ok(half(p, LOCK) > 1.15 * half(p, 0), String(p));
+});
+
+test('the balance zone is twice the band between the patches; inside it the bike falls far more slowly than past its edge, yet never stands up on its own', () => {
+  for (const p of PRESSURES)
+    for (const d of [0, LOCK]) {
+      const sup = support(prep(p), d);
+      assert.ok(ZONE === 2 && Math.abs(sup.zone - 2 * sup.half) < 1e-12);
+      const eq = balanced(p, d).phi;
+      const s = balanced(p, d, 0.1 * RAD);
+      while (!s.done && Math.abs(s.phi - eq) < 0.2 * RAD) step(s, p, {});
+      assert.ok(s.t > 2 * doubling(p), `${p} ${d}: ${s.t.toFixed(2)} s to double`);
+      assert.ok(s.t < 5, `${p} ${d}: the lean keeps growing`);
+    }
 });
 
 test('the contact patches are ovals the size of a palm: longer than wide, the rear one wider', () => {
@@ -150,24 +163,35 @@ test('with a slower reaction, soft tyres forgive more than hard ones', () => {
   const mean = (p) => {
     let t = 0;
     for (let seed = 1; seed <= 8; seed++)
-      t += ride(core, p, { delay: 0.12, seed, hipErr: (seed % 2 ? 1 : -1) * 0.006 }).t;
+      t += ride(core, p, { delay: 0.25, seed, hipErr: (seed % 2 ? 1 : -1) * 0.006 }).t;
     return t / 8;
   };
-  assert.ok(mean(0.8) > 1.5 * mean(2.0));
+  assert.ok(mean(0.8) > 2 * mean(2.0));
 });
 
-test('the hips alone keep a quick rider up for seconds; with the bars too, much longer, and at full lock still longer than with the hips alone', () => {
+test('a quick rider stays up for the whole minute with the hips alone, with the bars too, and at full lock', () => {
   const mean = (p, d0, use) => {
     let t = 0;
     for (let seed = 1; seed <= 4; seed++)
       t += ride(core, p, { d0, delay: 0.06, seed, hipErr: (seed % 2 ? 1 : -1) * 0.006, use }).t;
     return t / 4;
   };
-  for (const p of [0.8, 2.0]) {
-    const hips = mean(p, 0, ['hips']);
-    assert.ok(hips < 10, `${p}: ${hips.toFixed(1)} s`);
-    assert.ok(mean(p, 0) > 3 * hips, String(p));
-    const lock = mean(p, -LOCK);
-    assert.ok(lock > 1.5 * hips, `${p}: ${lock.toFixed(1)} s at full lock, ${hips.toFixed(1)} s with the hips alone`);
+  for (const p of [0.8, 2.0])
+    for (const [d0, use] of [
+      [0, ['hips']],
+      [0, undefined],
+      [-LOCK, undefined],
+    ]) {
+      const t = mean(p, d0, use);
+      assert.ok(t > 50, `${p} ${d0} ${use || 'hips and bars'}: ${t.toFixed(1)} s`);
+    }
+});
+
+test('reacting as late as to a picture on a screen, a rider still holds for tens of seconds at the default pressure', () => {
+  for (const d0 of [0, -LOCK]) {
+    let t = 0;
+    for (let seed = 1; seed <= 8; seed++)
+      t += ride(core, 1.6, { d0, delay: 0.2, seed, hipErr: (seed % 2 ? 1 : -1) * 0.006 }).t;
+    assert.ok(t / 8 > 20, `${d0}: ${(t / 8).toFixed(1)} s on average`);
   }
 });

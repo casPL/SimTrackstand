@@ -20,8 +20,9 @@ function bikeInfo() {
     [i18n`Wyprzedzenie (trail) / skręt kierownicy`, `${Math.round(BIKE.trail * 100)} cm / ±${BIKE.lock}°`],
     [i18n`Ślad tylnej opony: szerokość × długość`, `${cm(c.wr)} × ${cm(c.lr)} cm`],
     [i18n`Ślad przedniej opony: szerokość × długość`, `${cm(c.wf)} × ${cm(c.lf)} cm`],
-    [i18n`Pas podparcia: kierownica prosto / do oporu`, `±${cm(s0.half)} / ±${cm(s1.half)} cm`],
-    [i18n`Opona dochodzi do krawędzi śladu przy przechyle`, `${fmt(c.edge / RAD, 1)}°`],
+    [i18n`Pas między śladami opon: kierownica prosto / do oporu`, `±${cm(s0.half)} / ±${cm(s1.half)} cm`],
+    [i18n`Strefa balansu w grze: kierownica prosto / do oporu`, `±${cm(s0.zone)} / ±${cm(s1.zone)} cm`],
+    [i18n`Podparcie dochodzi do brzegu strefy przy przechyle`, `${fmt(edgeLean(c, 0) / RAD, 1)}°`],
     [i18n`Kierownica do oporu przesuwa środek ciężkości w stronę skrętu o`, `${cm(cogShift(c, lock))} cm`],
     [i18n`Dokręcenie kierownicy o 10° od razu prostuje motocykl o`, `${fmt(deg(kick), 1)}°`],
     [
@@ -79,7 +80,7 @@ function showReady() {
     <h2>${bike()}</h2>
     <p class="meta">${bar(cfg.p)} · ${i18n`tempo ${pct(cfg.tempo)}`}${rec ? ' · ' + i18n`rekord ${fmt(rec)} s` : ''}</p>
     <p>${i18n`Zaczynasz ze <b>stopą na ziemi</b>. Ustaw kierownicę i biodra tak, żeby nacisk na lewą stopę spadł prawie do zera, i dopiero wtedy wstań na podnóżki.`}</p>
-    <p>${i18n`Potem stoisz w miejscu jak najdłużej. Balansujesz <b>biodrami</b> i <b>kierownicą</b>. Koła stoją: motocykla nie przetoczysz ciałem.`}</p>
+    <p>${i18n`Potem stoisz w miejscu jak najdłużej. Biodrami i kierownicą trzymasz kropkę środka ciężkości w <b>zielonej strefie</b>. Koła stoją: motocykla nie przetoczysz ciałem.`}</p>
     <p>${i18n`Dokręcenie kierownicy w stronę przechyłu od razu lekko prostuje motocykl, o ile nie jest już na full locku. Próba kończy się podpórką, gdy środek ciężkości ucieknie o ${DAB_DEG}° od podparcia.`}</p>
     <p class="keys">${i18n`<kbd>A</kbd> <kbd>D</kbd> biodra · <kbd>←</kbd> <kbd>→</kbd> kierownica · <kbd>Spacja</kbd> wstań`}</p>
     <p>${cfg.tempo < 1 ? i18n`Tempo ${pct(cfg.tempo)}: czas płynie wolniej, fizyka zostaje ta sama.` + ' ' : ''}${i18n`100% to czas rzeczywisty.`}</p>
@@ -100,8 +101,8 @@ function tipFor(r) {
   if (r.wrongBody)
     return i18n`Biodra szły w stronę przechyłu. To prostuje motocykl tylko na chwilę, a opona zjeżdża spod środka ciężkości. Gdy motocykl kładzie się w prawo, dociśnij lewy podnóżek i przesuń biodra w lewo. Motocykl pochyli się pod tobą, a opona wróci pod środek ciężkości.`;
   if (r.time < 4)
-    return i18n`Korekty muszą być małe i wczesne. Patrz na kropkę środka ciężkości w panelu podparcia i reaguj, zanim wyjdzie z zielonego pasa.`;
-  return i18n`Dobrze. Teraz mniejsze i wcześniejsze ruchy bioder, zanim kropka środka ciężkości dojdzie do brzegu zielonego pasa.`;
+    return i18n`Korekty muszą być małe i wczesne. Patrz na kropkę środka ciężkości w panelu podparcia i reaguj, zanim wyjdzie z zielonej strefy.`;
+  return i18n`Dobrze. Teraz mniejsze i wcześniejsze ruchy bioder, zanim kropka środka ciężkości dojdzie do brzegu zielonej strefy.`;
 }
 
 function finish() {

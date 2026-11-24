@@ -72,7 +72,8 @@ function drawHud(w, h, supW, narrow) {
   };
   ctx.lineCap = 'butt';
   arc(-SPAN, SPAN, COL.rule, 8 * u);
-  arc(-DAB_DEG * RAD * 0.5, DAB_DEG * RAD * 0.5, alpha(COL.ok, 0.5), 8 * u);
+  const zoneA = Math.atan(S.zone / prep(cfg.p).h);
+  arc(-zoneA, zoneA, alpha(COL.ok, 0.5), 8 * u);
   arc(DAB_DEG * RAD, SPAN, 'rgba(239,83,80,0.8)', 8 * u);
   arc(-SPAN, -DAB_DEG * RAD, 'rgba(239,83,80,0.8)', 8 * u);
   ctx.strokeStyle = COL.dim;
@@ -93,8 +94,7 @@ function drawHud(w, h, supW, narrow) {
   ctx.moveTo(cx + Math.cos(an) * R * 0.55, cy + Math.sin(an) * R * 0.55);
   ctx.lineTo(cx + Math.cos(an) * (R + 4 * u), cy + Math.sin(an) * (R + 4 * u));
   ctx.stroke();
-  const cogCol =
-    Math.abs(S.cogLean) < DAB_DEG * RAD * 0.5 ? COL.ok : Math.abs(S.cogLean) < DAB_DEG * RAD ? COL.warn : '#ef5350';
+  const cogCol = zoneCol(S.cogLean, zoneA);
   const ac = ang(S.cogLean);
   disc(ctx, [cx + Math.cos(ac) * R, cy + Math.sin(ac) * R], 6 * u, cogCol);
   ctx.textAlign = 'center';

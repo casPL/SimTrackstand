@@ -310,7 +310,12 @@ function currentPose() {
   return pose;
 }
 
-/** The CoG, the point straight below it, the band of support and the point the tyres push from. */
+/** Colour of the CoG off the middle of the zone by off: green inside, yellow just beside it, red far outside. */
+function zoneCol(off, zone) {
+  return Math.abs(off) <= zone ? COL.ok : Math.abs(off) <= 2 * zone ? COL.warn : '#ef5350';
+}
+
+/** The CoG, the point straight below it, the balance zone and the point the tyres push from. */
 function drawCogMarker(cam, pose) {
   const g = ctx;
   const c = prep(cfg.p);
@@ -320,13 +325,13 @@ function drawCogMarker(cam, pose) {
   const at = (x, y) => [x, y, 0];
   const bx = BIKE.b;
   const off = Gb[1] - S.mid;
-  const half = S.half;
-  const col = Math.abs(off) <= half ? COL.ok : Math.abs(off) <= 2 * half ? COL.warn : '#ef5350';
+  const zone = S.zone;
+  const col = zoneCol(off, zone);
   const band = projPoly(cam, [
-    at(bx - 0.16, S.mid - half),
-    at(bx + 0.16, S.mid - half),
-    at(bx + 0.16, S.mid + half),
-    at(bx - 0.16, S.mid + half),
+    at(bx - 0.16, S.mid - zone),
+    at(bx + 0.16, S.mid - zone),
+    at(bx + 0.16, S.mid + zone),
+    at(bx - 0.16, S.mid + zone),
   ]);
   if (band) poly(g, band, alpha(COL.ok, 0.45), alpha(COL.ok, 0.9), 1);
   const yP = fall ? Gb[1] : S.yP;
@@ -421,14 +426,31 @@ function tyreTop(x, y, w, a) {
 }
 
 /**
+ * Centre of the front patch in the frame of the bike with the bars at d, and its turn a. The patch
+ * trails the point where the steering axis meets the ground and swings about it.
+ */
+function frontPatchAt(d) {
+  const a = groundSteer(d);
+  return { fx: BIKE.L + BIKE.trail * (1 - Math.cos(a)), fy: frontShift(d), a };
+}
+
+/**
+ * The balance zone of the game from above, from the rear patch to the front one: ZONE times as wide
+ * as the patches reach across, so that at the CoG it is as wide as support() says.
+ */
+function zoneTop(c, d, at) {
+  const { fx, fy, a } = frontPatchAt(d);
+  const zr = ZONE * (c.wr / 2),
+    zf = ZONE * patchHalf(c.wf, c.lf, a);
+  return [at(0, -zr), at(fx, fy - zf), at(fx, fy + zf), at(0, zr)];
+}
+
+/**
  * Both tyres and their contact patches from above, to scale, for the bars at d and the tyres of c;
  * at maps a point of the bike's frame to the canvas. Returns the outlines of the patches.
  */
 function drawTyresTop(g, at, c, d, lw) {
-  const a = groundSteer(d);
-  // The front patch trails the point where the steering axis meets the ground and swings about it.
-  const fx = BIKE.L + BIKE.trail * (1 - Math.cos(a)),
-    fy = frontShift(d);
+  const { fx, fy, a } = frontPatchAt(d);
   const map = (pts) => pts.map(([x, y]) => at(x, y));
   const rear = map(oval(0, 0, c.wr, c.lr, 0)),
     front = map(oval(fx, fy, c.wf, c.lf, a));
@@ -439,7 +461,7 @@ function drawTyresTop(g, at, c, d, lw) {
   return { rear, front };
 }
 
-/** The contact patches from above, to scale, and the band of support under the CoG. */
+/** The contact patches from above, to scale, the balance zone around them and the CoG over it. */
 function drawSupport(x, y, w, h, narrow) {
   const g = ctx;
   const c = prep(cfg.p);
@@ -458,11 +480,12 @@ function drawSupport(x, y, w, h, narrow) {
   const ox = x + w / 2,
     oy = bot - (BIKE.rr + 0.03) * k;
   const at = (bx, by) => [ox + by * k, oy - bx * k];
-  const half = S.half;
+  const zone = S.zone;
   const mid = S.mid;
   line(g, at(-BIKE.rr, 0), at(BIKE.L + BIKE.rr, 0), alpha(COL.chalk, 0.16), 1);
   const { rear, front } = drawTyresTop(g, at, c, S.d, 1);
-  poly(g, hull([...rear, ...front]), alpha(COL.ok, 0.16), alpha(COL.ok, 0.55), 1);
+  poly(g, zoneTop(c, S.d, at), alpha(COL.ok, 0.16), alpha(COL.ok, 0.55), 1);
+  poly(g, hull([...rear, ...front]), alpha(COL.chalk, 0.1), alpha(COL.chalk, 0.4), 1);
   poly(g, rear, '#c9cdd1');
   poly(g, front, '#c9cdd1');
   // Handlebar at the steering head, turned with the bars.
@@ -485,8 +508,8 @@ function drawSupport(x, y, w, h, narrow) {
   }
   // CoG and the point the tyres push from, at the CoG's station along the bike.
   const off = S.yG - mid;
-  const state = Math.abs(off) <= half ? COL.ok : Math.abs(off) <= 2 * half ? COL.warn : '#ef5350';
-  line(g, at(BIKE.b, mid - half), at(BIKE.b, mid + half), COL.ok, 3 * u);
+  const state = zoneCol(off, zone);
+  line(g, at(BIKE.b, mid - zone), at(BIKE.b, mid + zone), COL.ok, 3 * u);
   const yPt = at(BIKE.b, S.yP);
   line(g, [yPt[0], yPt[1] - 6 * u], [yPt[0], yPt[1] + 6 * u], COL.chalk, 1.5 * u);
   if (cfg.trend && phase === 'ride') {
@@ -502,7 +525,7 @@ function drawSupport(x, y, w, h, narrow) {
   g.textAlign = 'right';
   g.fillText(i18n`10 cm`, x + w - 8 * u, y + 16 * u);
 
-  // Gauge: the band under the CoG, centimetres to scale.
+  // Gauge: the balance zone under the CoG, centimetres to scale.
   const gy = y + h - gaugeH;
   const gx0 = x + 12 * u,
     gx1 = x + w - 12 * u;
@@ -516,12 +539,12 @@ function drawSupport(x, y, w, h, narrow) {
   g.fillStyle = COL.rule;
   g.fillRect(gx0, by - 4 * u, gx1 - gx0, 8 * u);
   g.fillStyle = alpha(COL.ok, 0.65);
-  g.fillRect(gxOf(mid - half), by - 4 * u, gxOf(mid + half) - gxOf(mid - half), 8 * u);
+  g.fillRect(gxOf(mid - zone), by - 4 * u, gxOf(mid + zone) - gxOf(mid - zone), 8 * u);
   g.fillStyle = COL.dim;
   for (let cm = -10; cm <= 10; cm += 5) g.fillRect(gxOf(cm / 100) - 0.5, by + 5 * u, 1, cm % 10 ? 3 * u : 5 * u);
   line(g, [gxOf(S.yP), by - 8 * u], [gxOf(S.yP), by + 8 * u], COL.chalk, 1.5 * u);
   disc(g, [gxOf(S.yG), by], 6 * u, state);
   g.fillStyle = COL.muted;
   g.textAlign = 'center';
-  g.fillText(i18n`pas ±${fmt(half * 100, 1)} cm · CoG ${fmt(off * 100, 1)} cm`, (gx0 + gx1) / 2, by + 22 * u);
+  g.fillText(i18n`strefa ±${fmt(zone * 100, 1)} cm · CoG ${fmt(off * 100, 1)} cm`, (gx0 + gx1) / 2, by + 22 * u);
 }

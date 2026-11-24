@@ -1,6 +1,6 @@
 {
   "name": "simtrackstand",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Motorcycle trackstand trainer: static balance with the body and the handlebar, tyre pressure, telemetry.",
   "license": "GPL-3.0-or-later",
   "author": "Maciej Kasprzyk (https://www.instagram.com/cas8pl/)",

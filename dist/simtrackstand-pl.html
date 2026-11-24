@@ -157,6 +157,7 @@ footer p { margin: 0 0 4px; }
 .sup-demo canvas { width: 100%; height: 270px; display: block; }
 .sup-demo input { width: 100%; accent-color: var(--cone); }
 .sup-demo .row { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.sup-demo .supv { font-family: var(--f-mono); font-size: 12px; color: var(--chalk); text-align: center; }
 .pads .grp.body .pad { border-color: var(--spd); }
 .pads .grp.body .pad.on { background: var(--spd); }
 </style>
@@ -202,13 +203,14 @@ footer p { margin: 0 0 4px; }
         <li><kbd>A</kbd> <kbd>D</kbd>: biodra w lewo i w prawo nad podnóżkami. Ze stopą na ziemi przesuwają się, póki trzymasz klawisz, i zostają. Na podnóżkach klawisz przesuwa je o 8 cm w swoją stronę, a po puszczeniu wracają do ustawienia sprzed wstania.</li>
         <li><kbd>←</kbd> <kbd>→</kbd>: kierownica. Skręca, póki trzymasz klawisz, i zostaje tam, gdzie ją puścisz.</li>
         <li><kbd>Spacja</kbd>: start, potem wstanie na podnóżki. <kbd>P</kbd>: pauza.</li>
-        <li>Kropka na wskaźniku przechyłu, na asfalcie pod motocyklem i w panelu podparcia to <b>środek ciężkości</b>: zielona nad pasem podparcia, żółta tuż obok, czerwona daleko poza nim. Kółko w panelu pokazuje, gdzie będzie za ćwierć sekundy.</li>
+        <li>Kropka na wskaźniku przechyłu, na asfalcie pod motocyklem i w panelu podparcia to <b>środek ciężkości</b>: zielona w strefie balansu, żółta tuż obok, czerwona daleko poza nią. Kółko w panelu pokazuje, gdzie będzie za ćwierć sekundy.</li>
         <li>Na telefonie przyciski są pod obrazem, a w poziomie na obrazie. Środkowy to start, wstanie i pauza.</li>
       </ul>
     </section>
     <section>
       <h3>Na czym stoi motocykl</h3>
       <p>Stojący motocykl podpierają tylko dwa ślady opon na asfalcie. Między nimi jest wąski <b>pas podparcia</b>, szeroki na kilka centymetrów. Dopóki środek ciężkości motocykla z kierowcą jest nad tym pasem, opony go utrzymają. Gdy z niego wyjdzie, motocykl przewraca się jak odwrócone wahadło.</p>
+      <p>W grze <b>strefa balansu</b> jest dwa razy szersza niż ten pas. Na motocyklu czujesz jego ruch ciałem i poprawiasz go od razu, a na obraz z ekranu reagujesz później. Szersza strefa to wyrównuje.</p>
       <p>Opony nie są sztywne: przy przechyle nacisk przesuwa się w poprzek śladu, aż dojdzie do jego krawędzi. Dalej motocykl podpiera już tylko zaokrąglony bok opony.</p>
     </section>
     <section>
@@ -228,11 +230,12 @@ footer p { margin: 0 0 4px; }
       <p>Dokręcona kierownica przesuwa jednak środek ciężkości w stronę przechyłu, więc to prostowanie trwa chwilę i resztę muszą zrobić biodra. Skręt w drugą stronę działa odwrotnie: najpierw odrobinę pogłębia przechył, a potem sprowadza środek ciężkości z powrotem nad opony.</p>
     </section>
     <section class="sup-demo">
-      <h3>Pas podparcia</h3>
-      <canvas id="sup" aria-label="Schemat z góry: ślady opon i pas podparcia pod środkiem ciężkości"></canvas>
+      <h3>Pas podparcia i strefa balansu</h3>
+      <canvas id="sup" aria-label="Schemat z góry: ślady opon, pas między nimi i strefa balansu pod środkiem ciężkości"></canvas>
       <input type="range" id="supr" min="-38" max="38" step="1" value="30" aria-label="Skręt kierownicy">
-      <div class="row"><span>kierownica w lewo</span><span id="supv"></span><span>w prawo</span></div>
-      <p>Ślady opon w skali, przy ciśnieniu wybranym nad grą. Przy 2 bar przedni ślad ma mniej więcej wielkość karty płatniczej, tylny jest szerszy. Im niższe ciśnienie, tym dłuższy ślad. Skręcona przednia opona obraca swój ślad, trochę poszerza pas podparcia i przesuwa go w bok.</p>
+      <div class="row"><span>kierownica w lewo</span><span>w prawo</span></div>
+      <div class="supv" id="supv"></div>
+      <p>Ślady opon w skali, przy ciśnieniu wybranym nad grą. Przy 2 bar przedni ślad ma mniej więcej wielkość karty płatniczej, tylny jest szerszy. Im niższe ciśnienie, tym dłuższy ślad. Skręcona przednia opona obraca swój ślad, trochę poszerza pas podparcia i przesuwa go w bok. Szary jest pas między śladami, a zielona strefa balansu w grze, dwa razy szersza.</p>
     </section>
     <section>
       <h3>Ciśnienie w oponach</h3>
@@ -277,8 +280,9 @@ const HIP_SWING = 0.08; // on the pegs: how far a held key takes the hips from w
 const BAR_W = 16; // handlebar following its target: natural frequency [rad/s], critically damped
 const STEER_RATE = 60; // handlebar target speed while a key is held [°/s]
 const P0 = 40; // pressure the tyre carcass carries on its own [kPa]
-const EDGE_DEG = 3.5; // tyre roll at which the support reaches the edge of the patches at 2.2 bar [°]
-const EDGE_SOFT = 3; // and how much further at 0.8 bar [°]
+const ZONE = 2; // the balance zone of the game is this many times wider than the band between the patches
+const FOLLOW = 0.8; // inside the zone, the share of the CoG's sideways movement the support follows at 2.2 bar
+const FOLLOW_SOFT = 0.11; // and how much more at 0.8 bar; below 1 the bike never stands up on its own
 const DAB_DEG = 10; // the rider puts a foot down when the CoG leans this far from the support [°]
 const LEAN_MAX = 28; // or when the bike itself leans this far [°]
 const FOOT_LEAN = -2; // lean of the bike resting on the rider's left foot before standing up [°]
@@ -314,7 +318,8 @@ const PREP = new Map();
  * Constants used by every physics step, computed once per pressure p [bar].
  * M, h: total mass and CoG height; J0: roll inertia about the ground line with the rider centred;
  * f: share of the weight on the front; wr, lr, wf, lf: contact patch width and length, rear and
- * front [m]; edge: tyre roll at which the pressure reaches the edge of the patch [rad];
+ * front [m]; follow: share of the CoG's sideways movement that the support follows inside the
+ * balance zone as the bike leans;
  * cr: tyre roll damping [N·m·s/rad].
  */
 function prep(p) {
@@ -342,7 +347,7 @@ function prep(p) {
     lr,
     wf,
     lf,
-    edge: (EDGE_DEG + (EDGE_SOFT * (2.2 - p)) / 1.4) * RAD,
+    follow: FOLLOW + (FOLLOW_SOFT * (2.2 - p)) / 1.4,
     cr: 30,
   };
   PREP.set(p, c);
@@ -369,25 +374,33 @@ function patchHalf(w, l, a) {
   return Math.hypot((w / 2) * Math.cos(a), (l / 2) * Math.sin(a));
 }
 
-/** Support under the CoG at steering d: centre and half width of the band the tyres can push from [m]. */
+/**
+ * Support under the CoG at steering d [m]: mid and half, the centre and half width of the band
+ * between the contact patches; zone, the half width of the balance zone of the game around mid. The
+ * zone is wider than the band, because a rider reacts to a picture on a screen much later than to the
+ * bike moving under the body.
+ */
 function support(c, d) {
-  return {
-    mid: c.f * frontShift(d),
-    half: (1 - c.f) * (c.wr / 2) + c.f * patchHalf(c.wf, c.lf, groundSteer(d)),
-  };
+  const half = (1 - c.f) * (c.wr / 2) + c.f * patchHalf(c.wf, c.lf, groundSteer(d));
+  return { mid: c.f * frontShift(d), half, zone: ZONE * half };
+}
+
+/** Lean at which the support reaches the edge of the balance zone with the bars at d [rad]. */
+function edgeLean(c, d) {
+  return support(c, d).zone / (c.follow * c.h);
 }
 
 /**
- * Where the tyres push from across the bike line at lean phi and steering d [m]. Each tyre rolls
- * across its patch up to the edge, then onto its round crown. With the front wheel turned, leaning
- * also moves its lowest point along the rim towards the low side.
+ * Where the tyres push from across the bike line at lean phi and steering d [m]. As the tyres roll,
+ * the support moves across the balance zone up to its edge, then the tyres roll onto their round
+ * crown. With the front wheel turned, leaning also moves its lowest point along the rim towards the
+ * low side.
  */
 function pushPoint(c, phi, d) {
   const sup = support(c, d);
+  const edge = edgeLean(c, d);
   const across =
-    Math.abs(phi) > c.edge
-      ? Math.sign(phi) * (sup.half + BIKE.crown * (Math.abs(phi) - c.edge))
-      : (sup.half * phi) / c.edge;
+    Math.abs(phi) > edge ? Math.sign(phi) * (sup.zone + BIKE.crown * (Math.abs(phi) - edge)) : (sup.zone * phi) / edge;
   const sd = Math.sin(groundSteer(d));
   return sup.mid + across + c.f * BIKE.rr * sd * sd * Math.sin(phi);
 }
@@ -403,7 +416,7 @@ function doubling(p) {
 //
 // One time step of the standing bike. The bike with the rider rolls about the line where the tyres
 // touch the asphalt, as an inverted pendulum. Gravity acts between the CoG and the point the tyres
-// push from, which moves across the contact patches as the tyres roll onto their side. Moving the
+// push from, which moves across the balance zone as the tyres roll onto their side. Moving the
 // hips over the pegs rolls the bike the other way. Turning the bars turns the frame about the rear
 // tyre, because the front patch cannot slide: the CoG moves across the tyre line towards the side
 // the bars turn, and while it moves, the bike rolls the other way. The wheels stand still.
@@ -412,18 +425,18 @@ function doubling(p) {
  * t: time on the pegs; phi, om: roll angle and rate; u, ud, uT, uS: hips over the pegs, their rate,
  * target and where they were set with the foot down [m]; d, dd, dT: steering angle, rate and
  * target; sx, sv: CoG shift across the tyre line made by the steering, and its rate [m]; yG, yGv,
- * yP: CoG, its rate and the point the tyres push from, across the bike line [m]; mid, half: the
- * support band; edge: tyres past the edge of their patches; cogLean: CoG angle from the middle of
- * the band; foot: the bike rests on the left foot; footLoad: what the foot carries [N]; done: 'dab'
- * when a foot goes down; sumCog, maxLean, into: statistics (into: time with the bars turned
- * towards the lean).
+ * yP: CoG, its rate and the point the tyres push from, across the bike line [m]; mid, half, zone:
+ * the band between the patches and the balance zone around it; edge: support past the zone;
+ * cogLean: CoG angle from the middle of the band; foot: the bike rests on the left foot; footLoad:
+ * what the foot carries [N]; done: 'dab' when a foot goes down; sumCog, maxLean, into: statistics
+ * (into: time with the bars turned towards the lean).
  */
 function newState() {
   // prettier-ignore
   return {
     t: 0, phi: FOOT_LEAN * RAD, om: 0, u: 0, ud: 0, uT: 0, uS: 0, d: 0, dd: 0, dT: 0, sx: 0, sv: 0,
-    yG: 0, yGv: 0, yP: 0, mid: 0, half: 0.03, edge: false, cogLean: 0, foot: true, footLoad: 0,
-    done: null, sumCog: 0, maxLean: 0, into: 0,
+    yG: 0, yGv: 0, yP: 0, mid: 0, half: 0.03, zone: 0.06, edge: false, cogLean: 0, foot: true,
+    footLoad: 0, done: null, sumCog: 0, maxLean: 0, into: 0,
   };
 }
 
@@ -467,9 +480,10 @@ function step(s, p, inp) {
   const sup = support(c, s.d);
   s.mid = sup.mid;
   s.half = sup.half;
+  s.zone = sup.zone;
   const cs = Math.cos(s.phi),
     sn = Math.sin(s.phi);
-  s.edge = Math.abs(s.phi) > c.edge;
+  s.edge = Math.abs(s.phi) > edgeLean(c, s.d);
   s.yP = pushPoint(c, s.phi, s.d);
   s.yG = c.h * sn + (bk.mr * s.u * cs) / c.M;
   s.yGv = c.h * cs * s.om + (bk.mr * (s.ud * cs - s.u * sn * s.om)) / c.M;
@@ -678,8 +692,9 @@ function bikeInfo() {
     [i18n`Wyprzedzenie (trail) / skręt kierownicy`, `${Math.round(BIKE.trail * 100)} cm / ±${BIKE.lock}°`],
     [i18n`Ślad tylnej opony: szerokość × długość`, `${cm(c.wr)} × ${cm(c.lr)} cm`],
     [i18n`Ślad przedniej opony: szerokość × długość`, `${cm(c.wf)} × ${cm(c.lf)} cm`],
-    [i18n`Pas podparcia: kierownica prosto / do oporu`, `±${cm(s0.half)} / ±${cm(s1.half)} cm`],
-    [i18n`Opona dochodzi do krawędzi śladu przy przechyle`, `${fmt(c.edge / RAD, 1)}°`],
+    [i18n`Pas między śladami opon: kierownica prosto / do oporu`, `±${cm(s0.half)} / ±${cm(s1.half)} cm`],
+    [i18n`Strefa balansu w grze: kierownica prosto / do oporu`, `±${cm(s0.zone)} / ±${cm(s1.zone)} cm`],
+    [i18n`Podparcie dochodzi do brzegu strefy przy przechyle`, `${fmt(edgeLean(c, 0) / RAD, 1)}°`],
     [i18n`Kierownica do oporu przesuwa środek ciężkości w stronę skrętu o`, `${cm(cogShift(c, lock))} cm`],
     [i18n`Dokręcenie kierownicy o 10° od razu prostuje motocykl o`, `${fmt(deg(kick), 1)}°`],
     [
@@ -737,7 +752,7 @@ function showReady() {
     <h2>${bike()}</h2>
     <p class="meta">${bar(cfg.p)} · ${i18n`tempo ${pct(cfg.tempo)}`}${rec ? ' · ' + i18n`rekord ${fmt(rec)} s` : ''}</p>
     <p>${i18n`Zaczynasz ze <b>stopą na ziemi</b>. Ustaw kierownicę i biodra tak, żeby nacisk na lewą stopę spadł prawie do zera, i dopiero wtedy wstań na podnóżki.`}</p>
-    <p>${i18n`Potem stoisz w miejscu jak najdłużej. Balansujesz <b>biodrami</b> i <b>kierownicą</b>. Koła stoją: motocykla nie przetoczysz ciałem.`}</p>
+    <p>${i18n`Potem stoisz w miejscu jak najdłużej. Biodrami i kierownicą trzymasz kropkę środka ciężkości w <b>zielonej strefie</b>. Koła stoją: motocykla nie przetoczysz ciałem.`}</p>
     <p>${i18n`Dokręcenie kierownicy w stronę przechyłu od razu lekko prostuje motocykl, o ile nie jest już na full locku. Próba kończy się podpórką, gdy środek ciężkości ucieknie o ${DAB_DEG}° od podparcia.`}</p>
     <p class="keys">${i18n`<kbd>A</kbd> <kbd>D</kbd> biodra · <kbd>←</kbd> <kbd>→</kbd> kierownica · <kbd>Spacja</kbd> wstań`}</p>
     <p>${cfg.tempo < 1 ? i18n`Tempo ${pct(cfg.tempo)}: czas płynie wolniej, fizyka zostaje ta sama.` + ' ' : ''}${i18n`100% to czas rzeczywisty.`}</p>
@@ -758,8 +773,8 @@ function tipFor(r) {
   if (r.wrongBody)
     return i18n`Biodra szły w stronę przechyłu. To prostuje motocykl tylko na chwilę, a opona zjeżdża spod środka ciężkości. Gdy motocykl kładzie się w prawo, dociśnij lewy podnóżek i przesuń biodra w lewo. Motocykl pochyli się pod tobą, a opona wróci pod środek ciężkości.`;
   if (r.time < 4)
-    return i18n`Korekty muszą być małe i wczesne. Patrz na kropkę środka ciężkości w panelu podparcia i reaguj, zanim wyjdzie z zielonego pasa.`;
-  return i18n`Dobrze. Teraz mniejsze i wcześniejsze ruchy bioder, zanim kropka środka ciężkości dojdzie do brzegu zielonego pasa.`;
+    return i18n`Korekty muszą być małe i wczesne. Patrz na kropkę środka ciężkości w panelu podparcia i reaguj, zanim wyjdzie z zielonej strefy.`;
+  return i18n`Dobrze. Teraz mniejsze i wcześniejsze ruchy bioder, zanim kropka środka ciężkości dojdzie do brzegu zielonej strefy.`;
 }
 
 function finish() {
@@ -2003,7 +2018,12 @@ function currentPose() {
   return pose;
 }
 
-/** The CoG, the point straight below it, the band of support and the point the tyres push from. */
+/** Colour of the CoG off the middle of the zone by off: green inside, yellow just beside it, red far outside. */
+function zoneCol(off, zone) {
+  return Math.abs(off) <= zone ? COL.ok : Math.abs(off) <= 2 * zone ? COL.warn : '#ef5350';
+}
+
+/** The CoG, the point straight below it, the balance zone and the point the tyres push from. */
 function drawCogMarker(cam, pose) {
   const g = ctx;
   const c = prep(cfg.p);
@@ -2013,13 +2033,13 @@ function drawCogMarker(cam, pose) {
   const at = (x, y) => [x, y, 0];
   const bx = BIKE.b;
   const off = Gb[1] - S.mid;
-  const half = S.half;
-  const col = Math.abs(off) <= half ? COL.ok : Math.abs(off) <= 2 * half ? COL.warn : '#ef5350';
+  const zone = S.zone;
+  const col = zoneCol(off, zone);
   const band = projPoly(cam, [
-    at(bx - 0.16, S.mid - half),
-    at(bx + 0.16, S.mid - half),
-    at(bx + 0.16, S.mid + half),
-    at(bx - 0.16, S.mid + half),
+    at(bx - 0.16, S.mid - zone),
+    at(bx + 0.16, S.mid - zone),
+    at(bx + 0.16, S.mid + zone),
+    at(bx - 0.16, S.mid + zone),
   ]);
   if (band) poly(g, band, alpha(COL.ok, 0.45), alpha(COL.ok, 0.9), 1);
   const yP = fall ? Gb[1] : S.yP;
@@ -2114,14 +2134,31 @@ function tyreTop(x, y, w, a) {
 }
 
 /**
+ * Centre of the front patch in the frame of the bike with the bars at d, and its turn a. The patch
+ * trails the point where the steering axis meets the ground and swings about it.
+ */
+function frontPatchAt(d) {
+  const a = groundSteer(d);
+  return { fx: BIKE.L + BIKE.trail * (1 - Math.cos(a)), fy: frontShift(d), a };
+}
+
+/**
+ * The balance zone of the game from above, from the rear patch to the front one: ZONE times as wide
+ * as the patches reach across, so that at the CoG it is as wide as support() says.
+ */
+function zoneTop(c, d, at) {
+  const { fx, fy, a } = frontPatchAt(d);
+  const zr = ZONE * (c.wr / 2),
+    zf = ZONE * patchHalf(c.wf, c.lf, a);
+  return [at(0, -zr), at(fx, fy - zf), at(fx, fy + zf), at(0, zr)];
+}
+
+/**
  * Both tyres and their contact patches from above, to scale, for the bars at d and the tyres of c;
  * at maps a point of the bike's frame to the canvas. Returns the outlines of the patches.
  */
 function drawTyresTop(g, at, c, d, lw) {
-  const a = groundSteer(d);
-  // The front patch trails the point where the steering axis meets the ground and swings about it.
-  const fx = BIKE.L + BIKE.trail * (1 - Math.cos(a)),
-    fy = frontShift(d);
+  const { fx, fy, a } = frontPatchAt(d);
   const map = (pts) => pts.map(([x, y]) => at(x, y));
   const rear = map(oval(0, 0, c.wr, c.lr, 0)),
     front = map(oval(fx, fy, c.wf, c.lf, a));
@@ -2132,7 +2169,7 @@ function drawTyresTop(g, at, c, d, lw) {
   return { rear, front };
 }
 
-/** The contact patches from above, to scale, and the band of support under the CoG. */
+/** The contact patches from above, to scale, the balance zone around them and the CoG over it. */
 function drawSupport(x, y, w, h, narrow) {
   const g = ctx;
   const c = prep(cfg.p);
@@ -2151,11 +2188,12 @@ function drawSupport(x, y, w, h, narrow) {
   const ox = x + w / 2,
     oy = bot - (BIKE.rr + 0.03) * k;
   const at = (bx, by) => [ox + by * k, oy - bx * k];
-  const half = S.half;
+  const zone = S.zone;
   const mid = S.mid;
   line(g, at(-BIKE.rr, 0), at(BIKE.L + BIKE.rr, 0), alpha(COL.chalk, 0.16), 1);
   const { rear, front } = drawTyresTop(g, at, c, S.d, 1);
-  poly(g, hull([...rear, ...front]), alpha(COL.ok, 0.16), alpha(COL.ok, 0.55), 1);
+  poly(g, zoneTop(c, S.d, at), alpha(COL.ok, 0.16), alpha(COL.ok, 0.55), 1);
+  poly(g, hull([...rear, ...front]), alpha(COL.chalk, 0.1), alpha(COL.chalk, 0.4), 1);
   poly(g, rear, '#c9cdd1');
   poly(g, front, '#c9cdd1');
   // Handlebar at the steering head, turned with the bars.
@@ -2178,8 +2216,8 @@ function drawSupport(x, y, w, h, narrow) {
   }
   // CoG and the point the tyres push from, at the CoG's station along the bike.
   const off = S.yG - mid;
-  const state = Math.abs(off) <= half ? COL.ok : Math.abs(off) <= 2 * half ? COL.warn : '#ef5350';
-  line(g, at(BIKE.b, mid - half), at(BIKE.b, mid + half), COL.ok, 3 * u);
+  const state = zoneCol(off, zone);
+  line(g, at(BIKE.b, mid - zone), at(BIKE.b, mid + zone), COL.ok, 3 * u);
   const yPt = at(BIKE.b, S.yP);
   line(g, [yPt[0], yPt[1] - 6 * u], [yPt[0], yPt[1] + 6 * u], COL.chalk, 1.5 * u);
   if (cfg.trend && phase === 'ride') {
@@ -2195,7 +2233,7 @@ function drawSupport(x, y, w, h, narrow) {
   g.textAlign = 'right';
   g.fillText(i18n`10 cm`, x + w - 8 * u, y + 16 * u);
 
-  // Gauge: the band under the CoG, centimetres to scale.
+  // Gauge: the balance zone under the CoG, centimetres to scale.
   const gy = y + h - gaugeH;
   const gx0 = x + 12 * u,
     gx1 = x + w - 12 * u;
@@ -2209,14 +2247,14 @@ function drawSupport(x, y, w, h, narrow) {
   g.fillStyle = COL.rule;
   g.fillRect(gx0, by - 4 * u, gx1 - gx0, 8 * u);
   g.fillStyle = alpha(COL.ok, 0.65);
-  g.fillRect(gxOf(mid - half), by - 4 * u, gxOf(mid + half) - gxOf(mid - half), 8 * u);
+  g.fillRect(gxOf(mid - zone), by - 4 * u, gxOf(mid + zone) - gxOf(mid - zone), 8 * u);
   g.fillStyle = COL.dim;
   for (let cm = -10; cm <= 10; cm += 5) g.fillRect(gxOf(cm / 100) - 0.5, by + 5 * u, 1, cm % 10 ? 3 * u : 5 * u);
   line(g, [gxOf(S.yP), by - 8 * u], [gxOf(S.yP), by + 8 * u], COL.chalk, 1.5 * u);
   disc(g, [gxOf(S.yG), by], 6 * u, state);
   g.fillStyle = COL.muted;
   g.textAlign = 'center';
-  g.fillText(i18n`pas ±${fmt(half * 100, 1)} cm · CoG ${fmt(off * 100, 1)} cm`, (gx0 + gx1) / 2, by + 22 * u);
+  g.fillText(i18n`strefa ±${fmt(zone * 100, 1)} cm · CoG ${fmt(off * 100, 1)} cm`, (gx0 + gx1) / 2, by + 22 * u);
 }
 
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -2293,7 +2331,8 @@ function drawHud(w, h, supW, narrow) {
   };
   ctx.lineCap = 'butt';
   arc(-SPAN, SPAN, COL.rule, 8 * u);
-  arc(-DAB_DEG * RAD * 0.5, DAB_DEG * RAD * 0.5, alpha(COL.ok, 0.5), 8 * u);
+  const zoneA = Math.atan(S.zone / prep(cfg.p).h);
+  arc(-zoneA, zoneA, alpha(COL.ok, 0.5), 8 * u);
   arc(DAB_DEG * RAD, SPAN, 'rgba(239,83,80,0.8)', 8 * u);
   arc(-SPAN, -DAB_DEG * RAD, 'rgba(239,83,80,0.8)', 8 * u);
   ctx.strokeStyle = COL.dim;
@@ -2314,8 +2353,7 @@ function drawHud(w, h, supW, narrow) {
   ctx.moveTo(cx + Math.cos(an) * R * 0.55, cy + Math.sin(an) * R * 0.55);
   ctx.lineTo(cx + Math.cos(an) * (R + 4 * u), cy + Math.sin(an) * (R + 4 * u));
   ctx.stroke();
-  const cogCol =
-    Math.abs(S.cogLean) < DAB_DEG * RAD * 0.5 ? COL.ok : Math.abs(S.cogLean) < DAB_DEG * RAD ? COL.warn : '#ef5350';
+  const cogCol = zoneCol(S.cogLean, zoneA);
   const ac = ang(S.cogLean);
   disc(ctx, [cx + Math.cos(ac) * R, cy + Math.sin(ac) * R], 6 * u, cogCol);
   ctx.textAlign = 'center';
@@ -2444,7 +2482,8 @@ function drawTele() {
 // Copyright (C) 2026 Maciej Kasprzyk
 //
 // The support diagram under the game: the tyres and their contact patches from above, to scale, for
-// a chosen steering angle, with both patches enlarged below.
+// a chosen steering angle, the band between the patches and the wider balance zone of the game, with
+// both patches enlarged below.
 
 const demoCanvas = $('sup');
 const demoCtx = demoCanvas.getContext('2d');
@@ -2458,7 +2497,7 @@ function drawSupportDemo() {
   const sup = support(c, d);
   const side = sup.mid < -0.001 ? i18n`w lewo` : sup.mid > 0.001 ? i18n`w prawo` : '';
   $('supv').textContent =
-    i18n`pas ±${fmt(sup.half * 100, 1)} cm` +
+    i18n`pas opon ±${fmt(sup.half * 100, 1)} cm · strefa w grze ±${fmt(sup.zone * 100, 1)} cm` +
     (side ? ' · ' + i18n`środek ${fmt(Math.abs(sup.mid) * 100, 1)} cm ${side}` : '');
   g.font = `500 11px ${FONT_MONO}`;
 
@@ -2474,12 +2513,14 @@ function drawSupportDemo() {
   const at = (bx, by) => [x0 + (bx + BIKE.rr + 0.03) * k1, oy + by * k1];
   line(g, at(-BIKE.rr, 0), at(BIKE.L + BIKE.rr, 0), alpha(COL.chalk, 0.16), 1);
   const { rear, front } = drawTyresTop(g, at, c, d, 1);
-  poly(g, hull([...rear, ...front]), alpha(COL.ok, 0.16), alpha(COL.ok, 0.55), 1);
+  poly(g, zoneTop(c, d, at), alpha(COL.ok, 0.16), alpha(COL.ok, 0.55), 1);
+  poly(g, hull([...rear, ...front]), alpha(COL.chalk, 0.1), alpha(COL.chalk, 0.4), 1);
   poly(g, rear, '#c9cdd1');
   poly(g, front, '#c9cdd1');
-  line(g, at(BIKE.b, sup.mid - sup.half), at(BIKE.b, sup.mid + sup.half), COL.ok, 3);
+  line(g, at(BIKE.b, sup.mid - sup.zone), at(BIKE.b, sup.mid + sup.zone), COL.ok, 3);
   const [gx, gy] = at(BIKE.b, 0);
-  line(g, [gx, 19], [gx, gy - 0.08 * k1 - 2], alpha(COL.chalk, 0.2), 1);
+  const lead = gy - (Math.abs(sup.mid) + sup.zone) * k1 - 3;
+  if (lead > 22) line(g, [gx, 19], [gx, lead], alpha(COL.chalk, 0.2), 1);
   disc(g, [gx, gy], 3.5, COL.chalk);
   g.fillStyle = COL.muted;
   g.textAlign = 'center';
@@ -2493,7 +2534,7 @@ function drawSupportDemo() {
   g.fillText(i18n`prawa strona`, left, oy + rearH + 13);
   g.textAlign = 'right';
   g.fillText(i18n`przód`, right, 14);
-  g.fillText(i18n`w skali`, at(BIKE.L - 0.3, 0)[0], oy + rearH + 13);
+  g.fillText(i18n`w skali`, at(BIKE.L - 0.3, 0)[0], oy + reach + 2);
 
   // Both patches enlarged to the same scale: the rear one, and the front one with the point where its
   // steering axis meets the ground. The labels keep a strip at the top of each box to themselves.

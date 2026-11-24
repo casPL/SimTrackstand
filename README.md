@@ -22,6 +22,9 @@ How to play:
 - On the pegs: <kbd>A</kbd> <kbd>D</kbd> take your hips 8 cm to one side while held, and they come back when
   you let go; <kbd>←</kbd> <kbd>→</kbd> turn the bars. The wheels stand still: a bike this heavy does not roll
   on the flat from moves of the body, and there is no throttle and no brake. <kbd>P</kbd> pauses.
+- Keep the centre of gravity dot in the green balance zone. The zone is twice as wide as the band between
+  the contact patches: on a real bike you feel it move and correct it at once, while you react to a picture
+  on a screen later.
 - The attempt ends with a dab when the centre of gravity gets 10° away from the support of the tyres.
 - On a phone the buttons sit under the picture, and on top of it in landscape.
 - Game speed 50% or 35% slows the clock down and leaves the physics as it is. Records are kept for each tyre
@@ -33,9 +36,11 @@ The fonts come from Google Fonts; offline, the browser falls back to its own.
 
 - The roll of the bike and rider as an inverted pendulum about the line where the tyres touch the asphalt.
 - Contact patches as ovals: their area comes from the load on each tyre and its pressure, and a softer tyre
-  spreads more along its length than across it. At 2 bar the front patch is about 5 × 10 cm. As the bike
-  leans, the point the tyres push from moves across the patches up to their edge and then onto the round
-  crown, so softer tyres forgive more.
+  spreads more along its length than across it. At 2 bar the front patch is about 5 × 10 cm.
+- A balance zone twice as wide as the band between the patches. As the bike leans, the point the tyres push
+  from moves across the zone and follows most of the movement of the centre of gravity, so inside the zone
+  the bike falls slowly, yet never stands up on its own. Past the edge of the zone the tyres roll onto their
+  round crown and the bike falls fast. Softer tyres give a wider zone and a slower fall.
 - The handlebar at a standstill: the front patch cannot slide, so turning the bars turns the frame about the
   rear tyre and carries the centre of gravity towards the turn, about 3 cm at full lock. The turned front
   patch turns its long side across the bike and widens the support band.
@@ -102,12 +107,14 @@ Gra to jeden plik HTML, wystarczy przeglądarka: pobierz [dist/simtrackstand-pl.
 ze stopą na ziemi: <kbd>←</kbd> <kbd>→</kbd> kierownica, <kbd>A</kbd> <kbd>D</kbd> biodra, a gdy nacisk na
 stopę jest bliski zera, <kbd>Spacja</kbd> stawia na podnóżki. Na podnóżkach <kbd>A</kbd> <kbd>D</kbd>
 przesuwają biodra o 8 cm w swoją stronę, póki trzymasz klawisz, a <kbd>←</kbd> <kbd>→</kbd> skręcają
-kierownicę. Koła stoją, nie ma gazu ani hamulca, a <kbd>P</kbd> to pauza. Na telefonie przyciski są
-na ekranie.
+kierownicę. Trzymasz kropkę środka ciężkości w zielonej strefie balansu, dwa razy szerszej niż pas między
+śladami opon, bo na obraz z ekranu reagujesz później niż na ruch motocykla pod sobą. Koła stoją, nie ma gazu
+ani hamulca, a <kbd>P</kbd> to pauza. Na telefonie przyciski są na ekranie.
 
 Model obejmuje przechył motocykla z kierowcą jako odwrócone wahadło na linii opon, owalne ślady opon
-zależne od nacisku i ciśnienia (na schemacie w skali), przesuwanie się podparcia po śladzie aż do jego
-krawędzi, kierownicę na postoju (rama obraca się wokół tylnej opony, a dokręcenie kierownicy w stronę
+zależne od nacisku i ciśnienia (na schemacie w skali), strefę balansu dwa razy szerszą niż pas między
+śladami (w niej motocykl przewraca się powoli, ale nigdy nie stoi sam, a za jej brzegiem opony toczą się
+na zaokrąglony bok i motocykl leci szybko), kierownicę na postoju (rama obraca się wokół tylnej opony, a dokręcenie kierownicy w stronę
 przechyłu od razu lekko prostuje motocykl, o ile nie jest na full locku), biodra nad podnóżkami, start
 ze stopą na ziemi i telemetrię z ostatnich 12 sekund.
 

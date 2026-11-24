@@ -38,13 +38,14 @@
         <li><kbd>A</kbd> <kbd>D</kbd>: hips left and right over the pegs. With the foot down they move while you hold the key and stay where you leave them. On the pegs a key moves them 8 cm towards its side, and when you let go they return to where they were before you stood up.</li>
         <li><kbd>←</kbd> <kbd>→</kbd>: bars. They turn while you hold the key and stay where you leave them.</li>
         <li><kbd>Space</kbd>: start, then stand up on the pegs. <kbd>P</kbd>: pause.</li>
-        <li>The dot on the lean gauge, on the asphalt under the bike and in the support panel is the <b>centre of gravity</b>: green over the support band, yellow just beside it, red far outside it. The ring in the panel shows where it will be a quarter of a second later.</li>
+        <li>The dot on the lean gauge, on the asphalt under the bike and in the support panel is the <b>centre of gravity</b>: green in the balance zone, yellow just beside it, red far outside it. The ring in the panel shows where it will be a quarter of a second later.</li>
         <li>On a phone the buttons sit under the picture, and on top of it in landscape. The middle one starts, stands up and pauses.</li>
       </ul>
     </section>
     <section>
       <h3>What the bike stands on</h3>
       <p>A standing bike rests only on the two contact patches of its tyres. Between them lies a narrow <b>support band</b>, a few centimetres wide. As long as the centre of gravity of the bike and rider stays over that band, the tyres hold it up. Once it leaves the band, the bike falls over like an inverted pendulum.</p>
+      <p>In the game the <b>balance zone</b> is twice as wide as that band. On a real bike you feel it move with your body and correct it at once, while you react to a picture on a screen later. The wider zone makes up for that.</p>
       <p>Tyres are not rigid: as the bike leans, the pressure moves across the patch until it reaches the edge. Beyond that only the round side of the tyre holds the bike up.</p>
     </section>
     <section>
@@ -64,11 +65,12 @@
       <p>Bars turned further, though, move the centre of gravity towards the lean, so the straightening lasts only a moment and the hips have to do the rest. Turning the bars the other way works the other way round: it first deepens the lean a little, then brings the centre of gravity back over the tyres.</p>
     </section>
     <section class="sup-demo">
-      <h3>Support band</h3>
-      <canvas id="sup" aria-label="Diagram from above: the contact patches and the support band under the centre of gravity"></canvas>
+      <h3>Support band and balance zone</h3>
+      <canvas id="sup" aria-label="Diagram from above: the contact patches, the band between them and the balance zone under the centre of gravity"></canvas>
       <input type="range" id="supr" min="-38" max="38" step="1" value="30" aria-label="Steering angle">
-      <div class="row"><span>bars to the left</span><span id="supv"></span><span>to the right</span></div>
-      <p>Contact patches to scale, at the pressure chosen above the game. At 2 bar the front patch is about the size of a credit card and the rear one is wider. The lower the pressure, the longer the patch. The turned front tyre turns its patch, widens the support band a little and moves it sideways.</p>
+      <div class="row"><span>bars to the left</span><span>to the right</span></div>
+      <div class="supv" id="supv"></div>
+      <p>Contact patches to scale, at the pressure chosen above the game. At 2 bar the front patch is about the size of a credit card and the rear one is wider. The lower the pressure, the longer the patch. The turned front tyre turns its patch, widens the support band a little and moves it sideways. The band between the patches is grey, and the balance zone of the game, twice as wide, is green.</p>
     </section>
     <section>
       <h3>Tyre pressure</h3>

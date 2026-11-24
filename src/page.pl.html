@@ -38,13 +38,14 @@
         <li><kbd>A</kbd> <kbd>D</kbd>: biodra w lewo i w prawo nad podnóżkami. Ze stopą na ziemi przesuwają się, póki trzymasz klawisz, i zostają. Na podnóżkach klawisz przesuwa je o 8 cm w swoją stronę, a po puszczeniu wracają do ustawienia sprzed wstania.</li>
         <li><kbd>←</kbd> <kbd>→</kbd>: kierownica. Skręca, póki trzymasz klawisz, i zostaje tam, gdzie ją puścisz.</li>
         <li><kbd>Spacja</kbd>: start, potem wstanie na podnóżki. <kbd>P</kbd>: pauza.</li>
-        <li>Kropka na wskaźniku przechyłu, na asfalcie pod motocyklem i w panelu podparcia to <b>środek ciężkości</b>: zielona nad pasem podparcia, żółta tuż obok, czerwona daleko poza nim. Kółko w panelu pokazuje, gdzie będzie za ćwierć sekundy.</li>
+        <li>Kropka na wskaźniku przechyłu, na asfalcie pod motocyklem i w panelu podparcia to <b>środek ciężkości</b>: zielona w strefie balansu, żółta tuż obok, czerwona daleko poza nią. Kółko w panelu pokazuje, gdzie będzie za ćwierć sekundy.</li>
         <li>Na telefonie przyciski są pod obrazem, a w poziomie na obrazie. Środkowy to start, wstanie i pauza.</li>
       </ul>
     </section>
     <section>
       <h3>Na czym stoi motocykl</h3>
       <p>Stojący motocykl podpierają tylko dwa ślady opon na asfalcie. Między nimi jest wąski <b>pas podparcia</b>, szeroki na kilka centymetrów. Dopóki środek ciężkości motocykla z kierowcą jest nad tym pasem, opony go utrzymają. Gdy z niego wyjdzie, motocykl przewraca się jak odwrócone wahadło.</p>
+      <p>W grze <b>strefa balansu</b> jest dwa razy szersza niż ten pas. Na motocyklu czujesz jego ruch ciałem i poprawiasz go od razu, a na obraz z ekranu reagujesz później. Szersza strefa to wyrównuje.</p>
       <p>Opony nie są sztywne: przy przechyle nacisk przesuwa się w poprzek śladu, aż dojdzie do jego krawędzi. Dalej motocykl podpiera już tylko zaokrąglony bok opony.</p>
     </section>
     <section>
@@ -64,11 +65,12 @@
       <p>Dokręcona kierownica przesuwa jednak środek ciężkości w stronę przechyłu, więc to prostowanie trwa chwilę i resztę muszą zrobić biodra. Skręt w drugą stronę działa odwrotnie: najpierw odrobinę pogłębia przechył, a potem sprowadza środek ciężkości z powrotem nad opony.</p>
     </section>
     <section class="sup-demo">
-      <h3>Pas podparcia</h3>
-      <canvas id="sup" aria-label="Schemat z góry: ślady opon i pas podparcia pod środkiem ciężkości"></canvas>
+      <h3>Pas podparcia i strefa balansu</h3>
+      <canvas id="sup" aria-label="Schemat z góry: ślady opon, pas między nimi i strefa balansu pod środkiem ciężkości"></canvas>
       <input type="range" id="supr" min="-38" max="38" step="1" value="30" aria-label="Skręt kierownicy">
-      <div class="row"><span>kierownica w lewo</span><span id="supv"></span><span>w prawo</span></div>
-      <p>Ślady opon w skali, przy ciśnieniu wybranym nad grą. Przy 2 bar przedni ślad ma mniej więcej wielkość karty płatniczej, tylny jest szerszy. Im niższe ciśnienie, tym dłuższy ślad. Skręcona przednia opona obraca swój ślad, trochę poszerza pas podparcia i przesuwa go w bok.</p>
+      <div class="row"><span>kierownica w lewo</span><span>w prawo</span></div>
+      <div class="supv" id="supv"></div>
+      <p>Ślady opon w skali, przy ciśnieniu wybranym nad grą. Przy 2 bar przedni ślad ma mniej więcej wielkość karty płatniczej, tylny jest szerszy. Im niższe ciśnienie, tym dłuższy ślad. Skręcona przednia opona obraca swój ślad, trochę poszerza pas podparcia i przesuwa go w bok. Szary jest pas między śladami, a zielona strefa balansu w grze, dwa razy szersza.</p>
     </section>
     <section>
       <h3>Ciśnienie w oponach</h3>
